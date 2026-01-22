@@ -1,6 +1,27 @@
 import { API_KEY } from "./config";
 import type { WeatherConditions } from "./assemblies";
 
+// OpenWeatherMap API response item type
+type OWMForecastItem = {
+  main: {
+    temp: number;
+    feels_like: number;
+    temp_min: number;
+    temp_max: number;
+    humidity: number;
+  };
+  wind: {
+    speed: number;
+    deg: number;
+  };
+  weather: Array<{
+    description: string;
+    icon: string;
+  }>;
+  pop?: number;
+  dt: number;
+};
+
 export type WeatherData = {
   temp: number;
   feels_like: number;
@@ -60,7 +81,7 @@ export async function getForecast(lat: number, lon: number): Promise<WeatherData
   if (!res.ok) throw new Error("Failed to fetch forecast");
   const data = await res.json();
 
-  return data.list.map((item: any) => ({
+  return data.list.map((item: OWMForecastItem) => ({
     temp: item.main.temp,
     feels_like: item.main.feels_like,
     temp_min: item.main.temp_min,
