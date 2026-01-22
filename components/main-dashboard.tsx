@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 
 // Dynamically import map to avoid SSR issues with Leaflet
@@ -43,6 +44,11 @@ import {
   type ActivityEntry
 } from "@/lib/collaboration";
 import { PROJECTS } from "@/lib/config";
+import WeatherVisualization from "@/components/weather-viz";
+import RealTimeStatus from "@/components/real-time-status";
+import CrewSafety from "@/components/crew-safety";
+import MaterialTracker from "@/components/material-tracker";
+import ProjectProgress from "@/components/project-progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -86,8 +92,72 @@ import {
   CloudRain,
   Snowflake,
   HardHat,
-  Hammer
+  Hammer,
+  Flame
 } from "lucide-react";
+
+// ========== PREMIUM ANIMATED COMPONENTS ==========
+
+// Animated counter for smooth number transitions
+function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
+  const [displayValue, setDisplayValue] = useState(0);
+  useEffect(() => {
+    let start: number;
+    const animate = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / 1200, 1);
+      setDisplayValue(Math.round((1 - Math.pow(1 - p, 4)) * value));
+      if (p < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [value]);
+  return <span className="tabular-nums font-mono">{prefix}{displayValue.toLocaleString()}{suffix}</span>;
+}
+
+// Progress ring with animated fill
+function ProgressRing({ progress, size = 64, color = "text-primary" }: { progress: number; size?: number; color?: string }) {
+  const r = (size - 5) / 2;
+  const c = r * 2 * Math.PI;
+  const [p, setP] = useState(0);
+  useEffect(() => { setTimeout(() => setP(progress), 100); }, [progress]);
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle className="text-muted/20" strokeWidth={5} stroke="currentColor" fill="transparent" r={r} cx={size/2} cy={size/2} />
+        <circle className={`${color} transition-all duration-1000`} strokeWidth={5} strokeDasharray={c} strokeDashoffset={c - (p / 100) * c} strokeLinecap="round" stroke="currentColor" fill="transparent" r={r} cx={size/2} cy={size/2} style={{ filter: "drop-shadow(0 0 6px currentColor)" }} />
+      </svg>
+      <span className={`absolute text-sm font-bold ${color}`}>{Math.round(p)}%</span>
+    </div>
+  );
+}
+
+// Mini sparkline for trend visualization
+function Sparkline({ data, color = "#22c55e", h = 28 }: { data: number[]; color?: string; h?: number }) {
+  const max = Math.max(...data), min = Math.min(...data), range = max - min || 1;
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ');
+  const gid = useMemo(() => `s-${Math.random().toString(36).slice(2)}`, []);
+  return (
+    <svg viewBox={`0 0 100 ${h}`} className="w-full" preserveAspectRatio="none">
+      <defs><linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={color} stopOpacity="0.4" /><stop offset="100%" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+      <polygon points={`0,${h} ${pts} 100,${h}`} fill={`url(#${gid})`} />
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+// Live clock with real-time updates
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <span className="text-xs text-muted-foreground font-mono tabular-nums">
+      {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    </span>
+  );
+}
 
 type MainDashboardProps = {
   initialWeather: WeatherData;
@@ -153,35 +223,72 @@ export default function MainDashboard({
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Shield className="w-6 h-6 text-primary" />
-            WEATHERCRAFT GUARDIAN
-          </h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-            <Brain className="w-4 h-4 text-purple-400" />
-            AI-Powered Project Intelligence Platform
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-            Live
-          </div>
-          <div className="px-3 py-1.5 bg-card border border-border rounded-md flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{defaultProject.name}</span>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {lastUpdated.toLocaleTimeString()}
-          </div>
-        </div>
-      </div>
+      {/* PREMIUM HEADER WITH GLASSMORPHISM */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden rounded-2xl glass border border-white/10 p-5 lg:p-6"
+      >
+        {/* Animated background gradients */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-primary/10 via-purple-500/5 to-transparent rounded-full -translate-y-40 translate-x-40 blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 left-0 w-60 h-60 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full translate-y-30 -translate-x-30 blur-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent animate-shimmer pointer-events-none" />
 
-      {/* TAB NAVIGATION */}
-      <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-lg w-fit">
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {/* Animated logo with glow */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-500 animate-pulse" />
+              <div className="relative p-3.5 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 border border-primary/30 backdrop-blur-sm">
+                <Shield className="w-9 h-9 text-primary drop-shadow-lg" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-black tracking-tight flex items-center gap-2">
+                <span className="bg-gradient-to-r from-foreground via-foreground to-muted-foreground bg-clip-text">WEATHERCRAFT</span>
+                <span className="text-primary drop-shadow-sm">GUARDIAN</span>
+              </h1>
+              <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1.5">
+                <Brain className="w-4 h-4 text-purple-400 animate-pulse" />
+                <span>AI-Powered Roofing Operations Command Center</span>
+                <span className="hidden sm:inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 text-xs font-semibold border border-purple-500/20">
+                  <Sparkles className="w-3 h-3" /> v2.0
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Live status with pulsing indicator */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 backdrop-blur-sm">
+              <div className="relative">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
+                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping opacity-75" />
+              </div>
+              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Live</span>
+            </div>
+            {/* Project selector */}
+            <div className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 hover:bg-white/10 transition-all duration-300 cursor-pointer backdrop-blur-sm group">
+              <MapPin className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+              <span className="text-sm font-medium">{defaultProject.name}</span>
+              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            {/* Live clock */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <LiveClock />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* PREMIUM TAB NAVIGATION */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="flex flex-wrap gap-1.5 bg-gradient-to-r from-muted/40 via-muted/30 to-muted/40 p-1.5 rounded-xl w-fit border border-border/50 backdrop-blur-sm"
+      >
         <TabButton active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={<LayoutDashboard className="w-4 h-4" />}>
           Mission Control
         </TabButton>
@@ -197,13 +304,14 @@ export default function MainDashboard({
         <TabButton active={activeTab === "documents"} onClick={() => setActiveTab("documents")} icon={<FolderOpen className="w-4 h-4" />}>
           Documents
         </TabButton>
-      </div>
+      </motion.div>
 
       {/* VIEWS */}
       {activeTab === "dashboard" && (
         <DashboardView
           conditions={conditions}
           weather={initialWeather}
+          hourlyForecast={initialForecast}
           assemblyResults={assemblyResults}
           systemCompliant={systemCompliant}
           failingAssemblies={failingAssemblies}
@@ -262,8 +370,8 @@ function TabButton({ active, onClick, icon, children, badge }: {
 }
 
 // ========== DASHBOARD VIEW ==========
-function DashboardView({ conditions, weather, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems }: {
-  conditions: WeatherConditions; weather: WeatherData; assemblyResults: AssemblyResult[]; systemCompliant: boolean;
+function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems }: {
+  conditions: WeatherConditions; weather: WeatherData; hourlyForecast: WeatherData[]; assemblyResults: AssemblyResult[]; systemCompliant: boolean;
   failingAssemblies: AssemblyResult[]; goCount: number; expandedAssemblies: Set<string>; toggleAssembly: (id: string) => void;
   project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[]; openItems: number; criticalItems: number;
 }) {
@@ -272,6 +380,12 @@ function DashboardView({ conditions, weather, assemblyResults, systemCompliant, 
 
   return (
     <div className="space-y-6">
+      {/* WEATHER VISUALIZATION */}
+      <WeatherVisualization
+        current={weather}
+        hourlyForecast={hourlyForecast}
+      />
+
       {/* SYSTEM STATUS */}
       <div className={`relative overflow-hidden rounded-xl border-2 ${systemCompliant ? 'border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5' : 'border-rose-500/50 bg-gradient-to-br from-rose-500/10 to-rose-500/5'}`}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-32 translate-x-32" />
@@ -390,6 +504,27 @@ function DashboardView({ conditions, weather, assemblyResults, systemCompliant, 
           </CardContent>
         </Card>
       )}
+
+      {/* OPERATIONS CENTER */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <RealTimeStatus
+          projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
+          assemblyGoCount={goCount}
+          totalAssemblies={assemblyResults.length}
+          systemCompliant={systemCompliant}
+        />
+        <CrewSafety weather={weather} />
+      </div>
+
+      {/* MATERIALS & PROGRESS */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <MaterialTracker
+          currentTemp={weather.temp}
+          windSpeed={weather.wind_speed}
+          isPrecipitating={(weather.pop || 0) > 0.3}
+        />
+        <ProjectProgress />
+      </div>
     </div>
   );
 }

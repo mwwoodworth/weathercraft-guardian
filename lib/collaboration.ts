@@ -295,10 +295,68 @@ export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }>
   low: { label: "Low", color: "bg-slate-400 text-white" }
 };
 
-export const STAKEHOLDER_CONFIG: Record<Stakeholder, { label: string; color: string }> = {
-  wci: { label: "WCI", color: "bg-primary" },
-  gc: { label: "GC", color: "bg-blue-600" },
-  owner: { label: "Owner", color: "bg-emerald-600" },
-  architect: { label: "Architect", color: "bg-purple-600" },
-  inspector: { label: "Inspector", color: "bg-amber-600" }
+export const STAKEHOLDER_CONFIG: Record<
+  Stakeholder,
+  { label: string; color: string; initials: string; fullName: string }
+> = {
+  wci: { label: "WCI", color: "bg-primary", initials: "MT", fullName: "Mike Thompson" },
+  gc: { label: "GC", color: "bg-blue-600", initials: "SC", fullName: "Sarah Chen" },
+  owner: { label: "Owner", color: "bg-emerald-600", initials: "CM", fullName: "Col. Martinez" },
+  architect: { label: "Architect", color: "bg-purple-600", initials: "DP", fullName: "David Park" },
+  inspector: { label: "Inspector", color: "bg-amber-600", initials: "JR", fullName: "James Roberts" }
 };
+
+// Helper to group activities by time period
+export function groupActivitiesByTime(activities: ActivityEntry[]): {
+  today: ActivityEntry[];
+  yesterday: ActivityEntry[];
+  thisWeek: ActivityEntry[];
+  older: ActivityEntry[];
+} {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86400000);
+  const weekStart = new Date(todayStart.getTime() - 7 * 86400000);
+
+  return {
+    today: activities.filter((a) => a.timestamp >= todayStart),
+    yesterday: activities.filter((a) => a.timestamp >= yesterdayStart && a.timestamp < todayStart),
+    thisWeek: activities.filter((a) => a.timestamp >= weekStart && a.timestamp < yesterdayStart),
+    older: activities.filter((a) => a.timestamp < weekStart)
+  };
+}
+
+// Helper to get critical/high priority item count
+export function getCriticalItemCount(items: ProjectItem[]): number {
+  return items.filter(
+    (i) =>
+      (i.priority === "critical" || i.priority === "high") &&
+      i.status !== "resolved" &&
+      i.status !== "closed"
+  ).length;
+}
+
+// Helper to calculate due date status
+export function getDueDateStatus(
+  dueDate: Date | undefined
+): { label: string; color: string; urgent: boolean } | null {
+  if (!dueDate) return null;
+
+  const now = new Date();
+  const diff = dueDate.getTime() - now.getTime();
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+  if (days < 0) {
+    return { label: `${Math.abs(days)}d overdue`, color: "text-rose-500 bg-rose-500/10", urgent: true };
+  } else if (days === 0) {
+    return { label: "Due today", color: "text-amber-500 bg-amber-500/10", urgent: true };
+  } else if (days === 1) {
+    return { label: "Due tomorrow", color: "text-amber-500 bg-amber-500/10", urgent: true };
+  } else if (days <= 3) {
+    return { label: `${days}d left`, color: "text-amber-400 bg-amber-500/10", urgent: false };
+  } else if (days <= 7) {
+    return { label: `${days}d left`, color: "text-blue-400 bg-blue-500/10", urgent: false };
+  } else {
+    return { label: `${days}d left`, color: "text-muted-foreground bg-muted/30", urgent: false };
+  }
+}
