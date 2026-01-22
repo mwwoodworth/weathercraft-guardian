@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Weathercraft Guardian - Mission Control
 
-## Getting Started
+**Operational Status:** ACTIVE
+**Target:** Peterson SFB (Building 140) / Aspen ES Roof
+**Version:** 1.0.0 (Guardian)
 
-First, run the development server:
+## Overview
+Weathercraft Guardian is a lightweight, tactical command center for roofing operations. It replaces legacy spreadsheet logs with a real-time "Go/No-Go" compliance engine based on specific material manufacturer constraints.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
+- **Material Intelligence:** Hardcoded logic for Green-Lock, R-Mer Seal, and other critical materials based on Manufacturer Data Sheets.
+- **Go/No-Go Gauge:** Instant visual feedback for the foreman based on current weather + material selection.
+- **Forecast Compliance:** 3-Day lookahead showing exactly when windows of opportunity open or close.
+- **Multi-Project:** Supports Peterson SFB (Default) and Aspen ES.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment (Vercel)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Push to GitHub:**
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   # Add your remote
+   git push -u origin main
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Deploy on Vercel:**
+   - Import the repository.
+   - Framework Preset: Next.js.
+   - **Environment Variables:**
+     - None required for MVP (API Key is currently embedded in `lib/config.ts` for ease of use, but recommended to move to `OPENWEATHER_API_KEY` in Vercel settings for production security).
 
-## Learn More
+## Operational Instructions
+1. Open the dashboard on mobile or tablet.
+2. Select the **"Mission Task"** (e.g., "Green-Lock Plus").
+3. View the **"Go/No-Go"** status.
+4. If **"GO"**, proceed. If **"NO GO"**, review the "Violations Detected" list (e.g., "Temp 38°F is below min 40°F").
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Material Database (Hardcoded in `lib/materials.ts`)
+- **Green-Lock Plus:** >40°F, Rising, No Precip.
+- **R-Mer Seal:** >50°F, Rising, No Precip.
+- **Garla-Block 2K:** >50°F (within 6h).
+- **Tuff-Stuff MS:** Storage <80°F.
