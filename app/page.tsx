@@ -1,4 +1,4 @@
-import { getCurrentWeather, getForecast, groupForecastByDay } from "@/lib/weather";
+import { getCurrentWeatherServer, getForecastServer, groupForecastByDayServer } from "@/lib/weather-server";
 import { PROJECTS } from "@/lib/config";
 import MainDashboard from "@/components/main-dashboard";
 
@@ -7,14 +7,14 @@ export const revalidate = 300; // Revalidate every 5 minutes
 export default async function Home() {
   const defaultProject = PROJECTS[0]; // Peterson SFB - Bldg 140
 
-  // Parallel fetch weather data
+  // Parallel fetch weather data (server-side)
   const [current, forecast] = await Promise.all([
-    getCurrentWeather(defaultProject.lat, defaultProject.lon),
-    getForecast(defaultProject.lat, defaultProject.lon)
+    getCurrentWeatherServer(defaultProject.lat, defaultProject.lon),
+    getForecastServer(defaultProject.lat, defaultProject.lon)
   ]);
 
   // Group forecast by day for calendar view
-  const dailyForecasts = groupForecastByDay(forecast);
+  const dailyForecasts = groupForecastByDayServer(forecast);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
