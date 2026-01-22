@@ -1,26 +1,4 @@
-import { API_KEY } from "./config";
 import type { WeatherConditions } from "./assemblies";
-
-// OpenWeatherMap API response item type
-type OWMForecastItem = {
-  main: {
-    temp: number;
-    feels_like: number;
-    temp_min: number;
-    temp_max: number;
-    humidity: number;
-  };
-  wind: {
-    speed: number;
-    deg: number;
-  };
-  weather: Array<{
-    description: string;
-    icon: string;
-  }>;
-  pop?: number;
-  dt: number;
-};
 
 export type WeatherData = {
   temp: number;
@@ -50,50 +28,24 @@ export type DailyForecast = {
   hourlyData: WeatherData[];
 };
 
+// Fetch current weather via server API route
 export async function getCurrentWeather(lat: number, lon: number): Promise<WeatherData> {
   const res = await fetch(
-    `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&appid=${API_KEY}`,
-    { next: { revalidate: 300 } }
+    `/api/weather?lat=${lat}&lon=${lon}&type=current`,
+    { cache: "no-store" }
   );
   if (!res.ok) throw new Error("Failed to fetch weather");
-  const data = await res.json();
-
-  return {
-    temp: data.main.temp,
-    feels_like: data.main.feels_like,
-    temp_min: data.main.temp_min,
-    temp_max: data.main.temp_max,
-    humidity: data.main.humidity,
-    wind_speed: data.wind.speed,
-    wind_deg: data.wind.deg,
-    description: data.weather[0].description,
-    icon: data.weather[0].icon,
-    pop: 0,
-    dt: data.dt
-  };
+  return res.json();
 }
 
+// Fetch forecast via server API route
 export async function getForecast(lat: number, lon: number): Promise<WeatherData[]> {
   const res = await fetch(
-    `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=imperial&appid=${API_KEY}`,
-    { next: { revalidate: 1800 } }
+    `/api/weather?lat=${lat}&lon=${lon}&type=forecast`,
+    { cache: "no-store" }
   );
   if (!res.ok) throw new Error("Failed to fetch forecast");
-  const data = await res.json();
-
-  return data.list.map((item: OWMForecastItem) => ({
-    temp: item.main.temp,
-    feels_like: item.main.feels_like,
-    temp_min: item.main.temp_min,
-    temp_max: item.main.temp_max,
-    humidity: item.main.humidity,
-    wind_speed: item.wind.speed,
-    wind_deg: item.wind.deg,
-    description: item.weather[0].description,
-    icon: item.weather[0].icon,
-    pop: item.pop || 0,
-    dt: item.dt
-  }));
+  return res.json();
 }
 
 // Group forecast data by day for calendar view

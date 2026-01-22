@@ -16,5 +16,3 @@ export const PROJECTS = [
     defaultMaterials: ["general-roofing"]
   }
 ];
-
-export const API_KEY = process.env.OPENWEATHERMAP_API_KEY || "";
