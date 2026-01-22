@@ -1,6 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import map to avoid SSR issues with Leaflet
+const ProjectMap = dynamic(() => import("@/components/project-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[300px] bg-muted rounded-lg flex items-center justify-center">
+      <span className="text-muted-foreground">Loading map...</span>
+    </div>
+  )
+});
 import {
   ASSEMBLIES,
   checkAllAssemblies,
@@ -295,18 +306,39 @@ function DashboardView({ conditions, weather, assemblyResults, systemCompliant, 
         </div>
       </div>
 
-      {/* AI SUMMARY */}
-      <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Brain className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI Analysis</div>
-              <p className="text-sm leading-relaxed">{executiveSummary}</p>
+      {/* AI SUMMARY + PROJECT MAP */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <Brain className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI Analysis</div>
+                <p className="text-sm leading-relaxed">{executiveSummary}</p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <MapPin className="w-4 h-4 text-primary" />
+              Project Location
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <ProjectMap
+              lat={project.lat}
+              lon={project.lon}
+              projectName={project.name}
+              location={project.location}
+              systemStatus={systemCompliant ? "go" : failingAssemblies.length < assemblyResults.length / 2 ? "partial" : "no-go"}
+              currentTemp={conditions.temp}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* INSIGHTS PREVIEW */}
       {topInsights.length > 0 && (
