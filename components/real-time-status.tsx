@@ -213,17 +213,31 @@ export default function RealTimeStatus({
     }
   }, [dismissAlert]);
 
-  // Demo: Add an alert on mount for demonstration
+  // Show alert based on actual system status
   useEffect(() => {
     const timer = setTimeout(() => {
-      addAlert({
-        message: "Weather conditions optimal for all assemblies",
-        severity: "success",
-        autoDismiss: 8
-      });
+      if (systemCompliant) {
+        addAlert({
+          message: "Weather conditions optimal for all assemblies",
+          severity: "success",
+          autoDismiss: 8
+        });
+      } else if (assemblyGoCount > 0) {
+        addAlert({
+          message: `${assemblyGoCount} of ${totalAssemblies} assemblies cleared - partial conditions`,
+          severity: "warning",
+          autoDismiss: 8
+        });
+      } else {
+        addAlert({
+          message: "Weather conditions not suitable for any assemblies",
+          severity: "critical",
+          autoDismiss: 8
+        });
+      }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [addAlert]);
+  }, [addAlert, systemCompliant, assemblyGoCount, totalAssemblies]);
 
   // Format time
   const formatTime = (date: Date) => {
