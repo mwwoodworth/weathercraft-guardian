@@ -389,209 +389,228 @@ function TabButton({ active, onClick, icon, children, badge }: {
   );
 }
 
-// ========== DASHBOARD VIEW ==========
+// ========== DASHBOARD VIEW WITH SUB-TABS ==========
+type DashboardSubTab = "overview" | "compliance" | "operations" | "progress";
+
 function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems, workLogStats, lastWeatherUpdate, onRefresh }: {
   conditions: WeatherConditions; weather: WeatherData; hourlyForecast: WeatherData[]; assemblyResults: AssemblyResult[]; systemCompliant: boolean;
   failingAssemblies: AssemblyResult[]; goCount: number; expandedAssemblies: Set<string>; toggleAssembly: (id: string) => void;
   project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[]; openItems: number; criticalItems: number;
   workLogStats: WorkLogStats; lastWeatherUpdate?: Date; onRefresh?: () => void | Promise<void>;
 }) {
+  const [activeSubTab, setActiveSubTab] = useState<DashboardSubTab>("overview");
   const [showHoldDetails, setShowHoldDetails] = useState(false);
   const TrendIcon = conditions.tempTrend === "rising" ? TrendingUp : conditions.tempTrend === "falling" ? TrendingDown : Minus;
   const trendColor = conditions.tempTrend === "rising" ? "text-emerald-400" : conditions.tempTrend === "falling" ? "text-rose-400" : "text-muted-foreground";
 
-  return (
-    <div className="space-y-6">
-      {/* WEATHER VISUALIZATION */}
-      <WeatherVisualization
-        current={weather}
-        hourlyForecast={hourlyForecast}
-        sunrise={weather.sunrise}
-        sunset={weather.sunset}
-      />
+  const issueCount = failingAssemblies.reduce((acc, r) => acc + r.componentResults.filter(cr => !cr.compliant).length, 0);
 
-      {/* SYSTEM STATUS - Compact header */}
-      <div className={`relative overflow-hidden rounded-xl border-2 ${systemCompliant ? 'border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5' : 'border-rose-500/50 bg-gradient-to-br from-rose-500/10 to-rose-500/5'}`}>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-32 translate-x-32" />
-        <div className="relative p-5">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-xl ${systemCompliant ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
-                {systemCompliant ? <CheckCircle2 className="w-10 h-10 text-emerald-500" /> : <XCircle className="w-10 h-10 text-rose-500" />}
+  return (
+    <div className="space-y-4">
+      {/* COMPACT SYSTEM STATUS HEADER - Always visible */}
+      <div className={`relative overflow-hidden rounded-xl border ${systemCompliant ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-rose-500/40 bg-rose-500/5'}`}>
+        <div className="relative p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${systemCompliant ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
+                {systemCompliant ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <XCircle className="w-6 h-6 text-rose-500" />}
               </div>
               <div>
-                <h2 className={`text-2xl lg:text-3xl font-black tracking-tight ${systemCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <h2 className={`text-lg font-bold ${systemCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {systemCompliant ? "ALL SYSTEMS GO" : "SYSTEM HOLD"}
                 </h2>
-                <p className="text-sm text-muted-foreground">{goCount}/{assemblyResults.length} Assemblies Cleared</p>
-                <div className="flex flex-wrap items-center gap-3 mt-1">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Sparkles className="w-3 h-3 text-purple-400" /> AI Confidence: High
-                  </span>
-                  {openItems > 0 && (
-                    <span className="flex items-center gap-1 text-xs text-amber-400">
-                      <AlertCircle className="w-3 h-3" /> {openItems} Open Items
-                    </span>
-                  )}
-                </div>
+                <p className="text-xs text-muted-foreground">{goCount}/{assemblyResults.length} Assemblies • {project.name}</p>
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 lg:gap-3">
-              <QuickStat label="TEMP" value={`${Math.round(conditions.temp)}°F`} trend={<TrendIcon className={`w-3 h-3 ${trendColor}`} />} />
-              <QuickStat label="WIND" value={`${Math.round(conditions.windSpeed)} mph`} alert={conditions.windSpeed > 20} />
+            <div className="flex items-center gap-2">
+              <QuickStat label="TEMP" value={`${Math.round(conditions.temp)}°`} trend={<TrendIcon className={`w-3 h-3 ${trendColor}`} />} />
+              <QuickStat label="WIND" value={`${Math.round(conditions.windSpeed)}`} alert={conditions.windSpeed > 20} />
               <QuickStat label="PRECIP" value={`${conditions.precipProbability}%`} alert={conditions.precipProbability > 40} />
-              <QuickStat label="HUMIDITY" value={`${conditions.humidity}%`} alert={conditions.humidity > 80} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* DECISION SUPPORT - AI Analysis + Map side by side */}
-      <SectionHeader
-        title="Decision Support"
-        subtitle="Forecast-driven recommendations, AI insights, and project context."
-        icon={<Brain className="w-4 h-4" />}
-      />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Brain className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI ANALYSIS</div>
-                <p className="text-sm leading-relaxed">{executiveSummary}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <MapPin className="w-4 h-4 text-primary" />
-              Project Location
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <ProjectMap
-              lat={project.lat}
-              lon={project.lon}
-              projectName={project.name}
-              location={project.location}
-              systemStatus={systemCompliant ? "go" : failingAssemblies.length < assemblyResults.length / 2 ? "partial" : "no-go"}
-              currentTemp={conditions.temp}
-            />
-          </CardContent>
-        </Card>
+      {/* SUB-TAB NAVIGATION */}
+      <div className="flex flex-wrap gap-1 bg-muted/30 p-1 rounded-lg w-fit border border-border/30">
+        <SubTabButton active={activeSubTab === "overview"} onClick={() => setActiveSubTab("overview")} icon={<LayoutDashboard className="w-3.5 h-3.5" />}>
+          Overview
+        </SubTabButton>
+        <SubTabButton active={activeSubTab === "compliance"} onClick={() => setActiveSubTab("compliance")} icon={<Target className="w-3.5 h-3.5" />} badge={!systemCompliant ? issueCount : undefined}>
+          Compliance
+        </SubTabButton>
+        <SubTabButton active={activeSubTab === "operations"} onClick={() => setActiveSubTab("operations")} icon={<Activity className="w-3.5 h-3.5" />}>
+          Operations
+        </SubTabButton>
+        <SubTabButton active={activeSubTab === "progress"} onClick={() => setActiveSubTab("progress")} icon={<Hammer className="w-3.5 h-3.5" />}>
+          Progress
+        </SubTabButton>
       </div>
 
-      {/* Priority Alerts - Only show if there are insights */}
-      {topInsights.length > 0 && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {topInsights.map(insight => <InsightCard key={insight.id} insight={insight} compact />)}
-        </div>
-      )}
+      {/* SUB-TAB CONTENT */}
+      <AnimatePresence mode="wait">
+        {activeSubTab === "overview" && (
+          <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
+            {/* Weather Visualization */}
+            <WeatherVisualization
+              current={weather}
+              hourlyForecast={hourlyForecast}
+              sunrise={weather.sunrise}
+              sunset={weather.sunset}
+            />
 
-      {/* ASSEMBLIES - Compact Status Grid */}
-      <SectionHeader
-        title="Assemblies & Compliance"
-        subtitle="System eligibility, component holds, and specification constraints."
-        icon={<Target className="w-4 h-4" />}
-        badge={`${goCount}/${assemblyResults.length} GO`}
-      />
-      <Card>
-        <CardHeader className="pb-3 pt-4">
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-base"><Target className="w-4 h-4 text-primary" />Assembly Status</span>
-            <Badge variant="outline" className="font-mono text-xs">{goCount}/{assemblyResults.length} GO</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 pt-0">
-          {assemblyResults.map(result => (
-            <AssemblyRow key={result.assembly.id} result={result} expanded={expandedAssemblies.has(result.assembly.id)} onToggle={() => toggleAssembly(result.assembly.id)} />
-          ))}
-        </CardContent>
-      </Card>
+            {/* AI Analysis + Map */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Brain className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI ANALYSIS</div>
+                      <p className="text-sm leading-relaxed">{executiveSummary}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-      {/* Hold Details - Collapsible */}
-      {!systemCompliant && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowHoldDetails(!showHoldDetails)}>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-rose-400 text-base">
-                <AlertTriangle className="w-4 h-4" />
-                Installation Hold - Flagged Components
-              </span>
-              <div className="flex items-center gap-2">
-                <Badge className="bg-rose-500/20 text-rose-300 text-xs">{failingAssemblies.reduce((acc, r) => acc + r.componentResults.filter(cr => !cr.compliant).length, 0)} issues</Badge>
-                {showHoldDetails ? <ChevronDown className="w-4 h-4 text-rose-400" /> : <ChevronRight className="w-4 h-4 text-rose-400" />}
+              <Card>
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    Project Location
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <ProjectMap
+                    lat={project.lat}
+                    lon={project.lon}
+                    projectName={project.name}
+                    location={project.location}
+                    systemStatus={systemCompliant ? "go" : failingAssemblies.length < assemblyResults.length / 2 ? "partial" : "no-go"}
+                    currentTemp={conditions.temp}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Priority Alerts */}
+            {topInsights.length > 0 && (
+              <div className="grid gap-3 md:grid-cols-2">
+                {topInsights.map(insight => <InsightCard key={insight.id} insight={insight} compact />)}
               </div>
-            </CardTitle>
-          </CardHeader>
-          <AnimatePresence>
-            {showHoldDetails && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                <CardContent className="pt-0">
-                  <div className="space-y-3">
-                    {failingAssemblies.map(result => (
-                      <div key={result.assembly.id} className="border-b border-rose-500/20 pb-3 last:border-0 last:pb-0">
-                        <div className="font-semibold text-rose-300 text-sm mb-2">{result.assembly.name}</div>
-                        <div className="grid gap-2 md:grid-cols-2">
-                          {result.componentResults.filter(cr => !cr.compliant).map(cr => (
-                            <div key={cr.component.id} className="bg-rose-500/10 rounded-lg p-2.5 border border-rose-500/20">
-                              <div className="font-medium text-xs">{cr.component.name}</div>
-                              {cr.component.criticalNote && <div className="text-[10px] text-rose-300/70 mt-0.5 italic">{cr.component.criticalNote}</div>}
-                              <div className="mt-1.5 space-y-0.5">
-                                {cr.reasons.map((r, i) => <div key={i} className="flex items-center gap-1.5 text-[10px] text-rose-300"><XCircle className="w-2.5 h-2.5 flex-shrink-0" /> {r}</div>)}
+            )}
+          </motion.div>
+        )}
+
+        {activeSubTab === "compliance" && (
+          <motion.div key="compliance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
+            {/* Assembly Status Grid */}
+            <Card>
+              <CardHeader className="pb-3 pt-4">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-base"><Target className="w-4 h-4 text-primary" />Assembly Status</span>
+                  <Badge variant="outline" className="font-mono text-xs">{goCount}/{assemblyResults.length} GO</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                {assemblyResults.map(result => (
+                  <AssemblyRow key={result.assembly.id} result={result} expanded={expandedAssemblies.has(result.assembly.id)} onToggle={() => toggleAssembly(result.assembly.id)} />
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Hold Details */}
+            {!systemCompliant && (
+              <Card className="border-rose-500/30 bg-rose-500/5">
+                <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowHoldDetails(!showHoldDetails)}>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-rose-400 text-base">
+                      <AlertTriangle className="w-4 h-4" />
+                      Installation Hold - Flagged Components
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-rose-500/20 text-rose-300 text-xs">{issueCount} issues</Badge>
+                      {showHoldDetails ? <ChevronDown className="w-4 h-4 text-rose-400" /> : <ChevronRight className="w-4 h-4 text-rose-400" />}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <AnimatePresence>
+                  {showHoldDetails && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                      <CardContent className="pt-0">
+                        <div className="space-y-3">
+                          {failingAssemblies.map(result => (
+                            <div key={result.assembly.id} className="border-b border-rose-500/20 pb-3 last:border-0 last:pb-0">
+                              <div className="font-semibold text-rose-300 text-sm mb-2">{result.assembly.name}</div>
+                              <div className="grid gap-2 md:grid-cols-2">
+                                {result.componentResults.filter(cr => !cr.compliant).map(cr => (
+                                  <div key={cr.component.id} className="bg-rose-500/10 rounded-lg p-2.5 border border-rose-500/20">
+                                    <div className="font-medium text-xs">{cr.component.name}</div>
+                                    {cr.component.criticalNote && <div className="text-[10px] text-rose-300/70 mt-0.5 italic">{cr.component.criticalNote}</div>}
+                                    <div className="mt-1.5 space-y-0.5">
+                                      {cr.reasons.map((r, i) => <div key={i} className="flex items-center gap-1.5 text-[10px] text-rose-300"><XCircle className="w-2.5 h-2.5 flex-shrink-0" /> {r}</div>)}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </motion.div>
+                      </CardContent>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
             )}
-          </AnimatePresence>
-        </Card>
-      )}
+          </motion.div>
+        )}
 
-      {/* OPERATIONS CENTER */}
-      <SectionHeader
-        title="Operations Center"
-        subtitle="Live status, crew safety, and site readiness."
-        icon={<Activity className="w-4 h-4" />}
-      />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <RealTimeStatus
-          projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
-          lastWeatherUpdate={lastWeatherUpdate}
-          assemblyGoCount={goCount}
-          totalAssemblies={assemblyResults.length}
-          systemCompliant={systemCompliant}
-          workLogStats={workLogStats}
-          onRefresh={onRefresh}
-        />
-        <CrewSafety weather={weather} />
-      </div>
+        {activeSubTab === "operations" && (
+          <motion.div key="operations" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <RealTimeStatus
+                projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
+                lastWeatherUpdate={lastWeatherUpdate}
+                assemblyGoCount={goCount}
+                totalAssemblies={assemblyResults.length}
+                systemCompliant={systemCompliant}
+                workLogStats={workLogStats}
+                onRefresh={onRefresh}
+              />
+              <CrewSafety weather={weather} />
+            </div>
+          </motion.div>
+        )}
 
-      {/* MATERIALS & PROGRESS */}
-      <SectionHeader
-        title="Materials & Progress"
-        subtitle="Temperature-sensitive inventory status and production tracking."
-        icon={<Hammer className="w-4 h-4" />}
-      />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MaterialTracker
-          currentTemp={weather.temp}
-          windSpeed={weather.wind_speed}
-          isPrecipitating={(weather.pop || 0) > 0.3}
-          tempTrend={conditions.tempTrend}
-        />
-        <ProjectProgress />
-      </div>
+        {activeSubTab === "progress" && (
+          <motion.div key="progress" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <MaterialTracker
+                currentTemp={weather.temp}
+                windSpeed={weather.wind_speed}
+                isPrecipitating={(weather.pop || 0) > 0.3}
+                tempTrend={conditions.tempTrend}
+              />
+              <ProjectProgress />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+function SubTabButton({ active, onClick, icon, children, badge }: {
+  active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode; badge?: number;
+}) {
+  return (
+    <button onClick={onClick} className={`relative flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all
+      ${active ? 'bg-primary/20 text-primary border border-primary/30' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>
+      {icon}{children}
+      {badge && badge > 0 && (
+        <span className="ml-1 w-4 h-4 bg-rose-500 text-white text-[10px] rounded-full flex items-center justify-center">{badge}</span>
+      )}
+    </button>
   );
 }
 
