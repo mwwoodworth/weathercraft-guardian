@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
-
 type ProjectMapProps = {
   lat: number;
   lon: number;
@@ -13,85 +11,94 @@ type ProjectMapProps = {
   currentTemp?: number;
 };
 
+// Build OSM-based raster style (no token required)
+function buildMapStyle() {
+  return {
+    version: 8 as const,
+    sources: {
+      "osm-tiles": {
+        type: "raster" as const,
+        tiles: ["https://tile.openstreetmap.de/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      {
+        id: "osm-tiles",
+        type: "raster" as const,
+        source: "osm-tiles",
+        minzoom: 0,
+        maxzoom: 22,
+      },
+    ],
+  };
+}
+
 export default function ProjectMap({
   lat,
   lon,
   projectName,
   location,
   systemStatus,
-  currentTemp
 }: ProjectMapProps) {
   const [mapState, setMapState] = useState<"loading" | "ready" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
-  const [debugInfo, setDebugInfo] = useState("Initializing...");
   const mapRef = useRef<unknown>(null);
+
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (!node || mapRef.current) return;
-
-    // Initialize map when container is available
     initializeMap(node);
   }, []);
 
   async function initializeMap(container: HTMLDivElement) {
-    setDebugInfo("Container found, importing mapbox-gl...");
-
-    if (!MAPBOX_TOKEN) {
-      setMapState("error");
-      setErrorMsg("No Mapbox token");
-      setDebugInfo("Error: No token");
-      return;
-    }
-
     try {
-      // Import mapbox-gl
-      const mapboxgl = (await import("mapbox-gl")).default;
-      setDebugInfo("mapbox-gl imported, loading CSS...");
+      // Import maplibre-gl (open-source, no token needed)
+      const maplibregl = (await import("maplibre-gl")).default;
 
       // Add CSS
-      if (!document.getElementById("mapbox-css")) {
+      if (!document.getElementById("maplibre-css")) {
         const link = document.createElement("link");
-        link.id = "mapbox-css";
+        link.id = "maplibre-css";
         link.rel = "stylesheet";
-        link.href = "https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css";
+        link.href = "https://unpkg.com/maplibre-gl@4.0.0/dist/maplibre-gl.css";
         document.head.appendChild(link);
-        await new Promise(r => setTimeout(r, 500)); // Wait for CSS
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      setDebugInfo(`Creating map... Container: ${container.offsetWidth}x${container.offsetHeight}`);
-
-      // Set token
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-
-      // Create map
-      const map = new mapboxgl.Map({
+      // Create map with OSM tiles (no token required!)
+      const map = new maplibregl.Map({
         container: container,
-        style: "mapbox://styles/mapbox/satellite-v9",
+        style: buildMapStyle(),
         center: [lon, lat],
-        zoom: 16
+        zoom: 16,
       });
 
       mapRef.current = map;
-      setDebugInfo("Map created, waiting for load event...");
 
       map.on("load", () => {
-        setDebugInfo("Map loaded!");
         setMapState("ready");
 
         // Add marker
-        new mapboxgl.Marker({ color: systemStatus === "go" ? "#22c55e" : "#ef4444" })
+        new maplibregl.Marker({
+          color: systemStatus === "go" ? "#22c55e" : systemStatus === "partial" ? "#f59e0b" : "#ef4444"
+        })
           .setLngLat([lon, lat])
           .addTo(map);
       });
 
       map.on("error", (e) => {
-        setDebugInfo(`Map error: ${e.error?.message || "unknown"}`);
+        console.error("Map error:", e);
+        // Don't fail on tile errors - those are recoverable
+        if (e.error?.message?.includes("tile")) return;
         setMapState("error");
         setErrorMsg(e.error?.message || "Map error");
       });
 
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      setDebugInfo(`Init error: ${msg}`);
+      console.error("Map init error:", msg);
       setMapState("error");
       setErrorMsg(msg);
     }
@@ -110,17 +117,9 @@ export default function ProjectMap({
   const statusColor = systemStatus === "go" ? "bg-emerald-500" : systemStatus === "partial" ? "bg-amber-500" : "bg-rose-500";
   const statusText = systemStatus === "go" ? "GO" : systemStatus === "partial" ? "PARTIAL" : "NO-GO";
 
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="relative h-[300px] bg-slate-800 rounded-lg border border-border flex items-center justify-center">
-        <div className="text-rose-400">No Mapbox Token</div>
-      </div>
-    );
-  }
-
   return (
     <div className="relative h-[300px] rounded-lg overflow-hidden border border-border bg-slate-900">
-      {/* Map container - MUST have explicit dimensions */}
+      {/* Map container */}
       <div
         ref={containerRef}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
@@ -134,9 +133,8 @@ export default function ProjectMap({
         </div>
       </div>
 
-      {/* Debug overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/90 px-3 py-2 z-10">
-        <div className="text-[10px] text-yellow-400 font-mono">{debugInfo}</div>
+      {/* Info overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/70 backdrop-blur-sm px-3 py-2 z-10">
         <div className="text-white text-sm font-medium">{projectName}</div>
         <div className="text-white/60 text-xs">{location}</div>
       </div>
