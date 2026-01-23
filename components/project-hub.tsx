@@ -122,11 +122,17 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
             <StatCard icon={<Camera className="w-5 h-5" />} label="Photos" value={stats.photos} />
             <StatCard icon={<Layers className="w-5 h-5" />} label="As-Builts" value={stats.asBuilts} />
           </div>
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-emerald-400" />
-              GC-safe library only (sensitive/financial files excluded).
+          <div className="mt-6 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+            <div className="flex items-center gap-2 text-sm text-amber-200">
+              <Shield className="w-4 h-4" />
+              <span className="font-medium">Project Hub - Demo Mode</span>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              This hub demonstrates document management capabilities including specs, drawings, RFIs, submittals, photo logs, and as-built tracking.
+              Full document library integration coming soon.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-blue-400" />
               {manifest.counts.totalGCSafeFiles} indexed files from {manifest.counts.totalFilesScanned} scanned.
@@ -178,15 +184,6 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
         </Section>
       </div>
 
-      <Section title="Communications" icon={<MessageSquare className="w-5 h-5 text-indigo-400" />}>
-        <div className="grid gap-3 md:grid-cols-2">
-          {manifest.communications.length === 0 ? (
-            <EmptyState label="No communications indexed yet." />
-          ) : (
-            manifest.communications.map(file => <FileCard key={file.id} file={file} />)
-          )}
-        </div>
-      </Section>
 
       <Section title="Photo Log" icon={<Camera className="w-5 h-5 text-slate-200" />}>
         {manifest.photos.length === 0 ? (
