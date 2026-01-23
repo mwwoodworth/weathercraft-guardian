@@ -491,14 +491,19 @@ function AreaDetailModal({
 // Horizontal Timeline Component
 function ProjectTimeline({ milestones }: { milestones: Milestone[] }) {
   const sortedMilestones = [...milestones].sort((a, b) => a.date.getTime() - b.date.getTime());
-  const today = new Date();
+  // Use state to avoid hydration mismatch with Date
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    setToday(new Date());
+  }, []);
 
-  // Calculate timeline span
-  const startDate = sortedMilestones[0]?.date || today;
-  const endDate = sortedMilestones[sortedMilestones.length - 1]?.date || today;
-  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const daysSinceStart = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  const progressPercent = Math.min(100, Math.max(0, (daysSinceStart / totalDays) * 100));
+  // Calculate timeline span (use fallback date for SSR)
+  const currentDate = today || new Date(2025, 0, 1); // Fixed fallback for SSR
+  const startDate = sortedMilestones[0]?.date || currentDate;
+  const endDate = sortedMilestones[sortedMilestones.length - 1]?.date || currentDate;
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) || 1;
+  const daysSinceStart = Math.ceil((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  const progressPercent = today ? Math.min(100, Math.max(0, (daysSinceStart / totalDays) * 100)) : 0;
 
   return (
     <div className="relative">
@@ -571,7 +576,11 @@ function ProjectTimeline({ milestones }: { milestones: Milestone[] }) {
 
 // Production Stats Cards
 function ProductionStatsGrid({ stats }: { stats: ProductionStats }) {
-  const daysUntilCompletion = Math.ceil((stats.projectedCompletion.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+  // Use state to avoid hydration mismatch with Date
+  const [daysUntilCompletion, setDaysUntilCompletion] = useState<number | null>(null);
+  useEffect(() => {
+    setDaysUntilCompletion(Math.ceil((stats.projectedCompletion.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+  }, [stats.projectedCompletion]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -642,7 +651,7 @@ function ProductionStatsGrid({ stats }: { stats: ProductionStats }) {
                 {stats.projectedCompletion.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </div>
               <div className="text-xs text-muted-foreground">
-                Projected ({daysUntilCompletion > 0 ? `${daysUntilCompletion} days` : 'Overdue'})
+                Projected ({daysUntilCompletion === null ? '...' : daysUntilCompletion > 0 ? `${daysUntilCompletion} days` : 'Overdue'})
               </div>
             </div>
           </div>
