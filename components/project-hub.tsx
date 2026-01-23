@@ -56,6 +56,17 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
     photos: manifest.photos.length,
     asBuilts: manifest.asBuiltCollections.length
   }), [manifest]);
+  const hasLibrary = useMemo(() => {
+    const all = [
+      ...manifest.documents,
+      ...manifest.rfis,
+      ...manifest.submittals,
+      ...manifest.communications,
+      ...manifest.photos,
+      ...manifest.references
+    ];
+    return all.some(file => Boolean(file.publicUrl));
+  }, [manifest]);
 
   const downloadIndex = () => {
     const rows = [
@@ -120,6 +131,10 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
               <FolderOpen className="w-4 h-4 text-blue-400" />
               {manifest.counts.totalGCSafeFiles} indexed files from {manifest.counts.totalFilesScanned} scanned.
             </div>
+            <div className="flex items-center gap-2">
+              <FileText className={`w-4 h-4 ${hasLibrary ? "text-emerald-400" : "text-amber-400"}`} />
+              {hasLibrary ? "Public document library published." : "Document library not published yet."}
+            </div>
           </div>
           <div className="mt-6">
             <Button onClick={downloadIndex} className="gap-2">
@@ -130,11 +145,15 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
       </Card>
 
       <Section title="Key Documents" icon={<FileText className="w-5 h-5 text-primary" />}>
-        <div className="grid gap-3 md:grid-cols-2">
-          {manifest.documents.map(file => (
-            <FileCard key={file.id} file={file} />
-          ))}
-        </div>
+        {manifest.documents.length === 0 ? (
+          <EmptyState label="No key documents available yet." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {manifest.documents.map(file => (
+              <FileCard key={file.id} file={file} />
+            ))}
+          </div>
+        )}
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -170,11 +189,15 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
       </Section>
 
       <Section title="Photo Log" icon={<Camera className="w-5 h-5 text-slate-200" />}>
-        <div className="grid gap-4 md:grid-cols-3">
-          {manifest.photos.map(photo => (
-            <PhotoCard key={photo.id} photo={photo} />
-          ))}
-        </div>
+        {manifest.photos.length === 0 ? (
+          <EmptyState label="No photos uploaded yet." />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-3">
+            {manifest.photos.map(photo => (
+              <PhotoCard key={photo.id} photo={photo} />
+            ))}
+          </div>
+        )}
       </Section>
 
       {manifest.references.length > 0 && (
@@ -188,27 +211,31 @@ export default function ProjectHub({ manifest }: { manifest: ProjectManifest }) 
       )}
 
       <Section title="As-Builts Library" icon={<Layers className="w-5 h-5 text-primary" />}>
-        <div className="grid gap-3 md:grid-cols-2">
-          {manifest.asBuiltCollections.map(collection => (
-            <Card key={collection.name} className="bg-muted/20">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-sm">{collection.name}</div>
-                    <div className="text-xs text-muted-foreground">{collection.count} files</div>
+        {manifest.asBuiltCollections.length === 0 ? (
+          <EmptyState label="As-built library is not published to the portal." />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {manifest.asBuiltCollections.map(collection => (
+              <Card key={collection.name} className="bg-muted/20">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-sm">{collection.name}</div>
+                      <div className="text-xs text-muted-foreground">{collection.count} files</div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">As-Built</Badge>
                   </div>
-                  <Badge variant="outline" className="text-xs">As-Built</Badge>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(collection.types).map(([ext, count]) => (
-                    <Badge key={ext} className="bg-white/5 border border-white/10 text-[10px]">{ext.toUpperCase()} • {count}</Badge>
-                  ))}
-                </div>
-                <div className="text-[10px] text-muted-foreground">Stored in {collection.path}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(collection.types).map(([ext, count]) => (
+                      <Badge key={ext} className="bg-white/5 border border-white/10 text-[10px]">{ext.toUpperCase()} • {count}</Badge>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">Stored in {collection.path}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </Section>
     </div>
   );
@@ -241,6 +268,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 }
 
 function FileCard({ file, compact }: { file: ProjectFile; compact?: boolean }) {
+  const href = file.publicUrl ? encodeURI(file.publicUrl) : `/api/project-files/${file.id}`;
   return (
     <Card className="bg-muted/20">
       <CardContent className={compact ? "p-3" : "p-4"}>
@@ -263,7 +291,7 @@ function FileCard({ file, compact }: { file: ProjectFile; compact?: boolean }) {
             )}
           </div>
           <Button asChild size="sm" variant="secondary">
-            <a href={`/api/project-files/${file.id}`} target="_blank" rel="noreferrer">Open</a>
+            <a href={href} target="_blank" rel="noreferrer">Open</a>
           </Button>
         </div>
       </CardContent>
@@ -272,6 +300,7 @@ function FileCard({ file, compact }: { file: ProjectFile; compact?: boolean }) {
 }
 
 function PhotoCard({ photo }: { photo: ProjectFile }) {
+  const href = photo.publicUrl ? encodeURI(photo.publicUrl) : `/api/project-files/${photo.id}`;
   return (
     <Card className="bg-muted/20 overflow-hidden">
       <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 to-slate-900">
@@ -291,7 +320,7 @@ function PhotoCard({ photo }: { photo: ProjectFile }) {
             <div className="text-[10px] text-muted-foreground">{photo.fileType.toUpperCase()} • {photo.sizeMb} MB</div>
           </div>
           <Button asChild size="sm" variant="secondary">
-            <a href={`/api/project-files/${photo.id}`} target="_blank" rel="noreferrer">View</a>
+            <a href={href} target="_blank" rel="noreferrer">View</a>
           </Button>
         </div>
       </CardContent>

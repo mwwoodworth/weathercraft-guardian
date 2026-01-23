@@ -28,6 +28,10 @@ export async function GET(
     return new Response("File not found", { status: 404 });
   }
 
+  if (file.publicUrl) {
+    return Response.redirect(new URL(file.publicUrl, request.url));
+  }
+
   const manifest = getProjectManifest();
   const absolutePath = path.join(manifest.rootPath, file.relativePath);
 

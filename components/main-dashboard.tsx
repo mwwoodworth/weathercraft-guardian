@@ -434,7 +434,11 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </div>
       </div>
 
-      {/* AI SUMMARY + PROJECT MAP */}
+      <SectionHeader
+        title="Decision Support"
+        subtitle="Forecast-driven recommendations, AI insights, and project context."
+        icon={<Brain className="w-4 h-4" />}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
           <CardContent className="p-4">
@@ -468,14 +472,18 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </Card>
       </div>
 
-      {/* INSIGHTS PREVIEW */}
       {topInsights.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
           {topInsights.map(insight => <InsightCard key={insight.id} insight={insight} compact />)}
         </div>
       )}
 
-      {/* ASSEMBLY STATUS */}
+      <SectionHeader
+        title="Assemblies & Compliance"
+        subtitle="System eligibility, component holds, and specification constraints."
+        icon={<Target className="w-4 h-4" />}
+        badge={`${goCount}/${assemblyResults.length} GO`}
+      />
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between">
@@ -490,7 +498,6 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </CardContent>
       </Card>
 
-      {/* FLAGGED */}
       {!systemCompliant && (
         <Card className="border-rose-500/30 bg-rose-500/5">
           <CardHeader>
@@ -519,7 +526,11 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </Card>
       )}
 
-      {/* OPERATIONS CENTER */}
+      <SectionHeader
+        title="Operations Center"
+        subtitle="Live status, crew safety, and site readiness."
+        icon={<Activity className="w-4 h-4" />}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <RealTimeStatus
           projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
@@ -533,7 +544,11 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         <CrewSafety weather={weather} />
       </div>
 
-      {/* MATERIALS & PROGRESS */}
+      <SectionHeader
+        title="Materials & Progress"
+        subtitle="Temperature-sensitive inventory status and production tracking."
+        icon={<Hammer className="w-4 h-4" />}
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <MaterialTracker
           currentTemp={weather.temp}
@@ -552,6 +567,25 @@ function QuickStat({ label, value, trend, alert }: { label: string; value: strin
     <div className={`p-3 rounded-lg ${alert ? 'bg-amber-500/20' : 'bg-white/5'}`}>
       <div className="text-xs text-muted-foreground uppercase tracking-wider">{label}</div>
       <div className="text-xl font-bold font-mono flex items-center gap-2">{value}{trend}</div>
+    </div>
+  );
+}
+
+function SectionHeader({ title, subtitle, icon, badge }: { title: string; subtitle?: string; icon?: React.ReactNode; badge?: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+      <div className="flex items-start gap-3">
+        {icon && (
+          <div className="p-2 rounded-lg border border-white/10 bg-white/5 text-primary">
+            {icon}
+          </div>
+        )}
+        <div>
+          <div className="text-lg font-semibold tracking-tight">{title}</div>
+          {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
+        </div>
+      </div>
+      {badge && <Badge variant="outline" className="font-mono">{badge}</Badge>}
     </div>
   );
 }
@@ -636,18 +670,14 @@ function IntelligenceView({ insights, scheduleRecs, riskAssessments, conditions 
 }) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 pb-4 border-b border-border">
-        <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20">
-          <Brain className="w-8 h-8 text-purple-400" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold">AI Intelligence Center</h2>
-          <p className="text-sm text-muted-foreground">Real-time analysis, predictive insights, and smart recommendations</p>
-        </div>
-      </div>
+      <SectionHeader
+        title="AI Intelligence Center"
+        subtitle="Real-time analysis, predictive insights, and smart recommendations."
+        icon={<Brain className="w-4 h-4" />}
+      />
 
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Lightbulb className="w-5 h-5 text-amber-400" />Active Insights</h3>
+      <div className="space-y-3">
+        <SectionHeader title="Active Insights" subtitle="Priority findings and actionable recommendations." icon={<Lightbulb className="w-4 h-4 text-amber-400" />} />
         {insights.length > 0 ? (
           <div className="space-y-4">{insights.map(insight => <InsightCard key={insight.id} insight={insight} />)}</div>
         ) : (
@@ -662,7 +692,7 @@ function IntelligenceView({ insights, scheduleRecs, riskAssessments, conditions 
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5 text-amber-400" />AI Schedule Optimization</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5 text-amber-400" />Schedule Optimization</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-3">
             {scheduleRecs.map((rec, i) => (
@@ -738,7 +768,18 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Work Log + Forecast"
+        subtitle="Actual production history with forward-looking weather impact."
+        icon={<CalendarDays className="w-4 h-4" />}
+      />
+
       {/* PROJECT STATS */}
+      <SectionHeader
+        title="Work Log Summary"
+        subtitle="Actual days worked and labor hours captured to date."
+        icon={<Activity className="w-4 h-4" />}
+      />
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="bg-emerald-500/10 border-emerald-500/30">
           <CardContent className="p-4">
@@ -787,6 +828,11 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
       </div>
 
       {/* CALENDAR */}
+      <SectionHeader
+        title="Work Log Calendar"
+        subtitle="Daily activity snapshot by month."
+        icon={<CalendarDays className="w-4 h-4" />}
+      />
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -848,6 +894,11 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
       </Card>
 
       {/* FORECAST */}
+      <SectionHeader
+        title="5-Day Forecast"
+        subtitle="Weather-driven Go/No-Go outlook for assemblies."
+        icon={<Calendar className="w-4 h-4" />}
+      />
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-primary" />5-Day Forecast</CardTitle></CardHeader>
         <CardContent>

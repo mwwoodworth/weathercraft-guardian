@@ -11,6 +11,8 @@ import type {
 } from "./project-types";
 
 const DEFAULT_ROOT = "/home/matt-woodworth/Desktop/250001 - PSFB Building 140";
+const PUBLIC_ROOT = path.join(process.cwd(), "public", "project", "library");
+const PUBLIC_URL_BASE = "/project/library";
 
 const EXCLUDE_EXTENSIONS = new Set(["db", "lnk", "bak"]);
 
@@ -135,6 +137,10 @@ function makeFileId(relPath: string) {
   return `${base}-${hash}`;
 }
 
+function toPublicUrl(relPath: string) {
+  return `${PUBLIC_URL_BASE}/${relPath.split(path.sep).join("/")}`;
+}
+
 function buildFileEntry(relPath: string, stats: fs.Stats): ProjectFile | null {
   const ext = path.extname(relPath).toLowerCase().replace(".", "");
   if (EXCLUDE_EXTENSIONS.has(ext)) return null;
@@ -231,7 +237,9 @@ let cachedManifest: ProjectManifest | null = null;
 export function getProjectManifest(): ProjectManifest {
   if (cachedManifest) return cachedManifest;
 
-  const rootPath = process.env.LOCAL_PROJECT_ROOT || DEFAULT_ROOT;
+  const localRoot = process.env.LOCAL_PROJECT_ROOT || DEFAULT_ROOT;
+  const rootPath = fs.existsSync(localRoot) ? localRoot : PUBLIC_ROOT;
+  const publicAvailable = fs.existsSync(PUBLIC_ROOT);
   const files: ProjectFile[] = [];
   let totalFiles = 0;
 
@@ -260,6 +268,15 @@ export function getProjectManifest(): ProjectManifest {
         const entryStats = fs.statSync(full);
         const fileEntry = buildFileEntry(rel, entryStats);
         if (fileEntry) {
+          if (publicAvailable) {
+            const publicPath = path.join(PUBLIC_ROOT, rel);
+            if (fs.existsSync(publicPath)) {
+              fileEntry.publicUrl = toPublicUrl(rel);
+              if (!fileEntry.previewUrl && ["jpg", "jpeg", "png", "webp"].includes(fileEntry.fileType)) {
+                fileEntry.previewUrl = fileEntry.publicUrl;
+              }
+            }
+          }
           if (fileEntry.title === "Header Sheet - PSFB 140") {
             fileEntry.previewUrl = "/project/header-sheet.jpg";
           }

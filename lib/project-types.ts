@@ -21,6 +21,7 @@ export type ProjectFile = {
   tags?: string[];
   description?: string;
   previewUrl?: string;
+  publicUrl?: string;
 };
 
 export type AsBuiltCollection = {
