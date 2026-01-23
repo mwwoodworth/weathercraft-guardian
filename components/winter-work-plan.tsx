@@ -13,7 +13,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// Card components available from @/components/ui/card if needed
 import { Badge } from "@/components/ui/badge";
 import type { WeatherData, DailyForecast } from "@/lib/weather";
 import { getWorkPackages, findWorkWindows, buildDailySuitability } from "@/lib/winter-planner";
@@ -94,13 +94,16 @@ export default function WinterWorkPlan({
 
   // Hydration-safe date - only render on client
   const [planDate, setPlanDate] = useState<string | null>(null);
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    setPlanDate(new Date().toLocaleDateString("en-US", {
+    const formattedDate = new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric"
-    }));
+    });
+    setPlanDate(formattedDate);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="space-y-6">

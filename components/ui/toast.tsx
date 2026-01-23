@@ -96,6 +96,15 @@ export function Toast({ toast, onDismiss, index }: ToastProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Dismiss handler - defined before the effect that uses it
+  const handleDismiss = React.useCallback(() => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+      toast.onDismiss?.();
+    }, 300);
+  }, [toast, onDismiss]);
+
   // Progress and auto-dismiss
   React.useEffect(() => {
     if (!hasAutoDismiss || isPaused) return;
@@ -112,15 +121,7 @@ export function Toast({ toast, onDismiss, index }: ToastProps) {
     }, 50);
 
     return () => clearInterval(interval);
-  }, [duration, hasAutoDismiss, isPaused]);
-
-  const handleDismiss = React.useCallback(() => {
-    setIsExiting(true);
-    setTimeout(() => {
-      onDismiss(toast.id);
-      toast.onDismiss?.();
-    }, 300);
-  }, [toast, onDismiss]);
+  }, [duration, hasAutoDismiss, isPaused, handleDismiss]);
 
   return (
     <div

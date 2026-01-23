@@ -1,5 +1,7 @@
 // Assembly-based compliance system for Building 140
-// An assembly is a roofing system with multiple weather-sensitive components
+// An assembly is a TRUE ROOFING SCOPE with multiple weather-sensitive components
+// Key principle: A single component GO does not authorize system mobilization
+// Requires: Full work day window + lead time for ALL components
 
 export type WeatherConstraint = {
   minTemp?: number;
@@ -24,17 +26,25 @@ export type Assembly = {
   name: string;
   description: string;
   components: Component[];
-  projectPhase: "Deck Prep" | "Base Sheet" | "Cap Sheet" | "Flashings" | "Coatings" | "Metal Panels";
+  scopeType: "Modified Bitumen" | "Standing Seam Metal";
+  // Lead time and work window requirements
+  minLeadTimeDays: number;        // Minimum days advance notice needed (forecast confidence)
+  minWorkWindowHours: number;     // Minimum hours of ALL COMPONENTS GO required
 };
 
-// Building 140 Assemblies
+// Building 140 TRUE ROOFING SCOPES
+// Consolidated from component-level to SYSTEM-level assemblies
+// A scope requires ALL components to be GO for the FULL work window
 export const ASSEMBLIES: Assembly[] = [
   {
-    id: "mod-bit-base-system",
-    name: "Modified Bitumen Base System",
-    description: "Deck preparation, primer, and base sheet installation",
-    projectPhase: "Deck Prep",
+    id: "mod-bit-system",
+    name: "Modified Bitumen System",
+    description: "Complete mod bit roofing scope: deck prep, primer, base sheet, cap sheet, flashings, sealants, and reflective coating",
+    scopeType: "Modified Bitumen",
+    minLeadTimeDays: 1,        // Need at least 1 day advance forecast showing GO
+    minWorkWindowHours: 8,     // Need full 8-hour work day of ALL components GO
     components: [
+      // DECK PREP & PRIMER
       {
         id: "garla-block-2k",
         name: "Garla-Block 2K Primer",
@@ -46,10 +56,11 @@ export const ASSEMBLIES: Assembly[] = [
           cureTimeHours: 6
         }
       },
+      // BASE SHEET
       {
-        id: "green-lock-plus",
-        name: "Green-Lock Plus Adhesive",
-        description: "Cold-applied membrane adhesive",
+        id: "green-lock-plus-base",
+        name: "Green-Lock Plus Adhesive (Base)",
+        description: "Cold-applied membrane adhesive for base sheet",
         criticalNote: "Must be 40°F AND RISING - do not apply if temps falling",
         constraints: {
           minTemp: 40,
@@ -67,19 +78,12 @@ export const ASSEMBLIES: Assembly[] = [
           noPrecip: true,
           maxWind: 25
         }
-      }
-    ]
-  },
-  {
-    id: "mod-bit-cap-system",
-    name: "Modified Bitumen Cap Sheet System",
-    description: "Cap sheet and finish membrane installation",
-    projectPhase: "Cap Sheet",
-    components: [
+      },
+      // CAP SHEET
       {
         id: "green-lock-plus-cap",
         name: "Green-Lock Plus Adhesive (Cap)",
-        description: "Adhesive for cap sheet application",
+        description: "Cold-applied membrane adhesive for cap sheet",
         criticalNote: "Must be 40°F AND RISING",
         constraints: {
           minTemp: 40,
@@ -97,15 +101,8 @@ export const ASSEMBLIES: Assembly[] = [
           noPrecip: true,
           maxWind: 25
         }
-      }
-    ]
-  },
-  {
-    id: "mod-bit-flashings",
-    name: "Flashing & Detail System",
-    description: "Penetrations, terminations, and detail work",
-    projectPhase: "Flashings",
-    components: [
+      },
+      // FLASHINGS & DETAILS
       {
         id: "garla-flex",
         name: "Garla-Flex Mastic",
@@ -135,15 +132,8 @@ export const ASSEMBLIES: Assembly[] = [
         constraints: {
           noPrecip: true
         }
-      }
-    ]
-  },
-  {
-    id: "reflective-coating",
-    name: "Reflective Coating System",
-    description: "Final reflective/protective coating application",
-    projectPhase: "Coatings",
-    components: [
+      },
+      // REFLECTIVE COATING (FINAL STEP)
       {
         id: "pyramic-plus-lo",
         name: "Pyramic Plus LO Coating",
@@ -158,10 +148,12 @@ export const ASSEMBLIES: Assembly[] = [
     ]
   },
   {
-    id: "metal-panel-system",
+    id: "standing-seam-system",
     name: "Standing Seam Metal System",
-    description: "R-Mer Span metal panel installation",
-    projectPhase: "Metal Panels",
+    description: "Complete standing seam metal roofing scope: underlayment and metal panel installation",
+    scopeType: "Standing Seam Metal",
+    minLeadTimeDays: 1,        // Need at least 1 day advance forecast showing GO
+    minWorkWindowHours: 8,     // Need full 8-hour work day of ALL components GO
     components: [
       {
         id: "r-mer-seal",
@@ -198,9 +190,19 @@ export type ComponentResult = {
 
 export type AssemblyResult = {
   assembly: Assembly;
-  compliant: boolean;
+  compliant: boolean;                    // Current moment: all components GO
   componentResults: ComponentResult[];
   failingComponents: Component[];
+  // Enhanced status for TRUE scope-level decision making
+  laborGreenLight: boolean;              // TRUE GO: has lead time + full work window + all components GO
+  hasRequiredLeadTime: boolean;          // Forecast shows GO at least minLeadTimeDays out
+  hasFullWorkWindow: boolean;            // Forecast shows minWorkWindowHours of continuous GO
+  workWindowHours: number;               // Actual consecutive GO hours available
+  nextWorkWindow?: {                     // When is the next viable work window?
+    startDate: Date;
+    durationHours: number;
+  };
+  statusMessage: string;                 // Human-readable status for crews
 };
 
 export type WeatherConditions = {
@@ -261,7 +263,8 @@ export function checkComponentCompliance(
 
 export function checkAssemblyCompliance(
   assembly: Assembly,
-  conditions: WeatherConditions
+  conditions: WeatherConditions,
+  hourlyForecast?: WeatherConditions[]  // Optional hourly forecast for work window calculation
 ): AssemblyResult {
   const componentResults = assembly.components.map(comp =>
     checkComponentCompliance(comp, conditions)
@@ -271,16 +274,150 @@ export function checkAssemblyCompliance(
     .filter(r => !r.compliant)
     .map(r => r.component);
 
+  const currentCompliant = failingComponents.length === 0;
+
+  // Calculate work window from hourly forecast
+  const { hasFullWorkWindow, workWindowHours, hasRequiredLeadTime, nextWorkWindow } =
+    calculateWorkWindow(assembly, conditions, hourlyForecast || []);
+
+  // LABOR GREEN LIGHT: requires ALL conditions met
+  // 1. Current moment compliant (all components GO)
+  // 2. Full work window available (minWorkWindowHours of continuous GO)
+  // 3. Lead time requirement met (forecast shows GO at least minLeadTimeDays out)
+  const laborGreenLight = currentCompliant && hasFullWorkWindow && hasRequiredLeadTime;
+
+  // Generate human-readable status message
+  let statusMessage: string;
+  if (laborGreenLight) {
+    statusMessage = `✅ LABOR GO: ${workWindowHours}hr window available, ${assembly.minLeadTimeDays}+ day lead time confirmed`;
+  } else if (currentCompliant && !hasFullWorkWindow) {
+    statusMessage = `⚠️ HOLD: Conditions OK but only ${workWindowHours}hr window (need ${assembly.minWorkWindowHours}hr)`;
+  } else if (currentCompliant && !hasRequiredLeadTime) {
+    statusMessage = `⚠️ HOLD: Need ${assembly.minLeadTimeDays}+ day forecast showing full work window`;
+  } else {
+    const failNames = failingComponents.slice(0, 2).map(c => c.name).join(", ");
+    statusMessage = `🛑 NO-GO: ${failingComponents.length} component(s) failing - ${failNames}${failingComponents.length > 2 ? '...' : ''}`;
+  }
+
   return {
     assembly,
-    compliant: failingComponents.length === 0,
+    compliant: currentCompliant,
     componentResults,
-    failingComponents
+    failingComponents,
+    laborGreenLight,
+    hasRequiredLeadTime,
+    hasFullWorkWindow,
+    workWindowHours,
+    nextWorkWindow,
+    statusMessage
   };
 }
 
-export function checkAllAssemblies(conditions: WeatherConditions): AssemblyResult[] {
-  return ASSEMBLIES.map(assembly => checkAssemblyCompliance(assembly, conditions));
+// Calculate work window availability from hourly forecast
+function calculateWorkWindow(
+  assembly: Assembly,
+  currentConditions: WeatherConditions,
+  hourlyForecast: WeatherConditions[]
+): {
+  hasFullWorkWindow: boolean;
+  workWindowHours: number;
+  hasRequiredLeadTime: boolean;
+  nextWorkWindow?: { startDate: Date; durationHours: number };
+} {
+  const requiredHours = assembly.minWorkWindowHours;
+  const requiredLeadDays = assembly.minLeadTimeDays;
+
+  // If no forecast data, we can only check current conditions
+  if (hourlyForecast.length === 0) {
+    const currentGo = assembly.components.every(comp =>
+      checkComponentCompliance(comp, currentConditions).compliant
+    );
+    return {
+      hasFullWorkWindow: false,  // Can't confirm without forecast
+      workWindowHours: currentGo ? 1 : 0,
+      hasRequiredLeadTime: false  // Can't confirm without forecast
+    };
+  }
+
+  // Count consecutive GO hours starting from each hour
+  let maxConsecutiveHours = 0;
+  let currentConsecutive = 0;
+  let firstWorkWindowStart: number | undefined;
+
+  for (let i = 0; i < hourlyForecast.length; i++) {
+    const hourConditions = hourlyForecast[i];
+    const allComponentsGo = assembly.components.every(comp =>
+      checkComponentCompliance(comp, hourConditions).compliant
+    );
+
+    if (allComponentsGo) {
+      currentConsecutive++;
+      if (firstWorkWindowStart === undefined && currentConsecutive >= requiredHours) {
+        firstWorkWindowStart = i - currentConsecutive + 1;
+      }
+    } else {
+      if (currentConsecutive > maxConsecutiveHours) {
+        maxConsecutiveHours = currentConsecutive;
+      }
+      currentConsecutive = 0;
+    }
+  }
+
+  // Check final streak
+  if (currentConsecutive > maxConsecutiveHours) {
+    maxConsecutiveHours = currentConsecutive;
+  }
+
+  const hasFullWorkWindow = maxConsecutiveHours >= requiredHours;
+
+  // Check lead time: need GO window at least requiredLeadDays * 24 hours out
+  const leadTimeHours = requiredLeadDays * 24;
+  let hasRequiredLeadTime = false;
+
+  if (hourlyForecast.length >= leadTimeHours) {
+    // Check if there's a full work window starting at or after lead time
+    for (let startHour = leadTimeHours; startHour <= hourlyForecast.length - requiredHours; startHour++) {
+      let consecutiveGo = 0;
+      for (let h = startHour; h < startHour + requiredHours && h < hourlyForecast.length; h++) {
+        const allGo = assembly.components.every(comp =>
+          checkComponentCompliance(comp, hourlyForecast[h]).compliant
+        );
+        if (allGo) {
+          consecutiveGo++;
+        } else {
+          break;
+        }
+      }
+      if (consecutiveGo >= requiredHours) {
+        hasRequiredLeadTime = true;
+        break;
+      }
+    }
+  }
+
+  // Find next work window
+  let nextWorkWindow: { startDate: Date; durationHours: number } | undefined;
+  if (firstWorkWindowStart !== undefined) {
+    const now = new Date();
+    nextWorkWindow = {
+      startDate: new Date(now.getTime() + firstWorkWindowStart * 60 * 60 * 1000),
+      durationHours: maxConsecutiveHours
+    };
+  }
+
+  return {
+    hasFullWorkWindow,
+    workWindowHours: maxConsecutiveHours,
+    hasRequiredLeadTime,
+    nextWorkWindow
+  };
+}
+
+export function checkAllAssemblies(
+  conditions: WeatherConditions,
+  hourlyForecast?: WeatherConditions[]
+): AssemblyResult[] {
+  return ASSEMBLIES.map(assembly => checkAssemblyCompliance(assembly, conditions, hourlyForecast));
 }
 
 // Get the most restrictive constraint across all assemblies

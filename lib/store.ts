@@ -3,7 +3,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { ProjectItem, ActivityEntry, DailyLog, Priority, Status, ItemType, Stakeholder } from "./collaboration";
+import type { ProjectItem, ActivityEntry, Stakeholder } from "./collaboration";
 
 // Work entry type for calendar tracking
 export type WorkEntry = {
@@ -288,7 +288,8 @@ export const useGuardianStore = create<GuardianState>()(
 
       removeWorkEntry: (date) => {
         set((state) => {
-          const { [date]: removed, ...rest } = state.workEntries;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { [date]: _, ...rest } = state.workEntries;
           return { workEntries: rest };
         });
       },

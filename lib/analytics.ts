@@ -590,7 +590,7 @@ export function getWeeklyProduction(
   }
 
   return Array.from(weeks.entries())
-    .map(([_weekKey, data]) => ({
+    .map(([, data]) => ({
       week: data.startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       weekStart: data.startDate,
       sqft: data.sqft,

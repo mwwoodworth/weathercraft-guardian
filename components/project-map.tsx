@@ -41,9 +41,12 @@ export default function ProjectMap({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Client-only rendering for Mapbox (SSR compatibility)
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setMounted(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!mounted || !mapContainer.current || !MAPBOX_TOKEN) return;

@@ -176,6 +176,8 @@ function ProgressRing({
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (animatedPercentage / 100) * circumference;
 
+  // Animation state management
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (animate) {
       const timer = setTimeout(() => {
@@ -186,6 +188,7 @@ function ProgressRing({
       setAnimatedPercentage(percentage);
     }
   }, [percentage, animate]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -493,9 +496,11 @@ function ProjectTimeline({ milestones }: { milestones: Milestone[] }) {
   const sortedMilestones = [...milestones].sort((a, b) => a.date.getTime() - b.date.getTime());
   // Use state to avoid hydration mismatch with Date
   const [today, setToday] = useState<Date | null>(null);
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setToday(new Date());
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Calculate timeline span (use fallback date for SSR)
   const currentDate = today || new Date(2025, 0, 1); // Fixed fallback for SSR
@@ -578,9 +583,11 @@ function ProjectTimeline({ milestones }: { milestones: Milestone[] }) {
 function ProductionStatsGrid({ stats }: { stats: ProductionStats }) {
   // Use state to avoid hydration mismatch with Date
   const [daysUntilCompletion, setDaysUntilCompletion] = useState<number | null>(null);
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setDaysUntilCompletion(Math.ceil((stats.projectedCompletion.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
   }, [stats.projectedCompletion]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

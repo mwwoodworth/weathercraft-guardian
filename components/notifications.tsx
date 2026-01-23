@@ -205,6 +205,8 @@ export function useWeatherAlerts(
   const lastAlerts = React.useRef<Set<string>>(new Set());
   const mergedThresholds = { ...DEFAULT_THRESHOLDS, ...thresholds };
 
+  // Track individual condition properties to avoid unnecessary re-renders
+  /* eslint-disable react-hooks/exhaustive-deps */
   React.useEffect(() => {
     if (!enabled || !conditions) return;
 
@@ -304,6 +306,7 @@ export function useWeatherAlerts(
     weatherAlert,
     mergedThresholds
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }
 
 // ========== DEMO COMPONENT FOR TESTING ==========

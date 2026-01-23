@@ -14,7 +14,6 @@ const ProjectMap = dynamic(() => import("@/components/project-map"), {
   )
 });
 import {
-  ASSEMBLIES,
   checkAllAssemblies,
   type AssemblyResult,
   type WeatherConditions
@@ -26,7 +25,8 @@ import {
   getForecast,
   groupForecastByDay,
   toWeatherConditions,
-  dailyToWeatherConditions
+  dailyToWeatherConditions,
+  forecastToWeatherConditionsArray
 } from "@/lib/weather";
 import {
   generateAIInsights,
@@ -77,60 +77,10 @@ import {
   Zap,
   Activity,
   BarChart3,
-  AlertCircle,
   CalendarDays,
   Snowflake,
   Hammer
 } from "lucide-react";
-
-// ========== PREMIUM ANIMATED COMPONENTS ==========
-
-// Animated counter for smooth number transitions
-function AnimatedCounter({ value, suffix = "", prefix = "" }: { value: number; suffix?: string; prefix?: string }) {
-  const [displayValue, setDisplayValue] = useState(0);
-  useEffect(() => {
-    let start: number;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / 1200, 1);
-      setDisplayValue(Math.round((1 - Math.pow(1 - p, 4)) * value));
-      if (p < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [value]);
-  return <span className="tabular-nums font-mono">{prefix}{displayValue.toLocaleString()}{suffix}</span>;
-}
-
-// Progress ring with animated fill
-function ProgressRing({ progress, size = 64, color = "text-primary" }: { progress: number; size?: number; color?: string }) {
-  const r = (size - 5) / 2;
-  const c = r * 2 * Math.PI;
-  const [p, setP] = useState(0);
-  useEffect(() => { setTimeout(() => setP(progress), 100); }, [progress]);
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle className="text-muted/20" strokeWidth={5} stroke="currentColor" fill="transparent" r={r} cx={size/2} cy={size/2} />
-        <circle className={`${color} transition-all duration-1000`} strokeWidth={5} strokeDasharray={c} strokeDashoffset={c - (p / 100) * c} strokeLinecap="round" stroke="currentColor" fill="transparent" r={r} cx={size/2} cy={size/2} style={{ filter: "drop-shadow(0 0 6px currentColor)" }} />
-      </svg>
-      <span className={`absolute text-sm font-bold ${color}`}>{Math.round(p)}%</span>
-    </div>
-  );
-}
-
-// Mini sparkline for trend visualization
-function Sparkline({ data, color = "#22c55e", h = 28 }: { data: number[]; color?: string; h?: number }) {
-  const max = Math.max(...data), min = Math.min(...data), range = max - min || 1;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${h - ((v - min) / range) * (h - 4) - 2}`).join(' ');
-  const gid = useMemo(() => `s-${Math.random().toString(36).slice(2)}`, []);
-  return (
-    <svg viewBox={`0 0 100 ${h}`} className="w-full" preserveAspectRatio="none">
-      <defs><linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={color} stopOpacity="0.4" /><stop offset="100%" stopColor={color} stopOpacity="0" /></linearGradient></defs>
-      <polygon points={`0,${h} ${pts} 100,${h}`} fill={`url(#${gid})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
 
 // Live clock with real-time updates (hydration-safe)
 function LiveClock() {
@@ -197,18 +147,24 @@ export default function MainDashboard({
     }
   }, [defaultProject.lat, defaultProject.lon]);
 
+  // Initial data fetch on mount - legitimate async data fetching pattern
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     refreshWeather();
   }, [refreshWeather]);
 
+  // Refresh weather when switching to weather-dependent tabs
   useEffect(() => {
     if (activeTab === "calendar" || activeTab === "winter") {
       refreshWeather();
     }
   }, [activeTab, refreshWeather]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const conditions = toWeatherConditions(weather, forecast);
-  const assemblyResults = checkAllAssemblies(conditions);
+  // Convert hourly forecast to WeatherConditions array for work window calculation
+  const hourlyConditions = forecastToWeatherConditionsArray(forecast);
+  const assemblyResults = checkAllAssemblies(conditions, hourlyConditions);
   const aiInsights = generateAIInsights(conditions, assemblyResults, dailyForecasts);
   const scheduleRecs = generateScheduleRecommendations(dailyForecasts);
   const riskAssessments = generateRiskAssessments(dailyForecasts);
@@ -216,9 +172,10 @@ export default function MainDashboard({
   const workLog = B140_WORK_LOG;
   const workLogStats = useMemo(() => getWorkLogStats(workLog), [workLog]);
 
-  const systemCompliant = assemblyResults.every(r => r.compliant);
-  const failingAssemblies = assemblyResults.filter(r => !r.compliant);
-  const goCount = assemblyResults.filter(r => r.compliant).length;
+  // LABOR GREEN LIGHT requires: all components GO + full work window + lead time
+  const systemCompliant = assemblyResults.every(r => r.laborGreenLight);
+  const failingAssemblies = assemblyResults.filter(r => !r.laborGreenLight);
+  const goCount = assemblyResults.filter(r => r.laborGreenLight).length;
 
   const toggleAssembly = (id: string) => {
     const next = new Set(expandedAssemblies);
@@ -227,9 +184,8 @@ export default function MainDashboard({
     setExpandedAssemblies(next);
   };
 
-  // Project hub summary counts
+  // Project hub summary count for tab badge
   const openItems = projectManifest.rfis.length + projectManifest.submittals.length;
-  const criticalItems = projectManifest.rfis.length;
 
   return (
     <div className="space-y-6">
@@ -338,8 +294,6 @@ export default function MainDashboard({
           project={defaultProject}
           executiveSummary={executiveSummary}
           topInsights={aiInsights.slice(0, 2)}
-          openItems={openItems}
-          criticalItems={criticalItems}
           workLogStats={workLogStats}
           lastWeatherUpdate={lastUpdated}
           onRefresh={refreshWeather}
@@ -351,14 +305,12 @@ export default function MainDashboard({
           insights={aiInsights}
           scheduleRecs={scheduleRecs}
           riskAssessments={riskAssessments}
-          conditions={conditions}
         />
       )}
 
       {activeTab === "calendar" && (
         <ProjectCalendarView
           dailyForecasts={dailyForecasts}
-          riskAssessments={riskAssessments}
           workLog={workLog}
         />
       )}
@@ -392,10 +344,10 @@ function TabButton({ active, onClick, icon, children, badge }: {
 // ========== DASHBOARD VIEW WITH SUB-TABS ==========
 type DashboardSubTab = "overview" | "compliance" | "operations" | "progress";
 
-function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems, workLogStats, lastWeatherUpdate, onRefresh }: {
+function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, workLogStats, lastWeatherUpdate, onRefresh }: {
   conditions: WeatherConditions; weather: WeatherData; hourlyForecast: WeatherData[]; assemblyResults: AssemblyResult[]; systemCompliant: boolean;
   failingAssemblies: AssemblyResult[]; goCount: number; expandedAssemblies: Set<string>; toggleAssembly: (id: string) => void;
-  project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[]; openItems: number; criticalItems: number;
+  project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[];
   workLogStats: WorkLogStats; lastWeatherUpdate?: Date; onRefresh?: () => void | Promise<void>;
 }) {
   const [activeSubTab, setActiveSubTab] = useState<DashboardSubTab>("overview");
@@ -645,22 +597,54 @@ function SectionHeader({ title, subtitle, icon, badge }: { title: string; subtit
 function AssemblyRow({ result, expanded, onToggle }: { result: AssemblyResult; expanded: boolean; onToggle: () => void; }) {
   const passingCount = result.componentResults.filter(c => c.compliant).length;
   const totalCount = result.componentResults.length;
+
+  // Determine display status: LABOR GO (green), HOLD (amber), NO-GO (red)
+  const isLaborGo = result.laborGreenLight;
+  const isPartialGo = result.compliant && !result.laborGreenLight; // Components OK but missing window/lead time
+
+  const borderClass = isLaborGo
+    ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10'
+    : isPartialGo
+    ? 'border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10'
+    : 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10';
+
+  const iconClass = isLaborGo
+    ? 'text-emerald-500'
+    : isPartialGo
+    ? 'text-amber-500'
+    : 'text-rose-500';
+
+  const badgeClass = isLaborGo
+    ? 'bg-emerald-500 text-white'
+    : isPartialGo
+    ? 'bg-amber-500 text-white'
+    : 'bg-rose-500 text-white';
+
+  const statusLabel = isLaborGo ? 'LABOR GO' : isPartialGo ? 'HOLD' : 'NO-GO';
+
   return (
-    <div className={`rounded-lg border transition-all ${result.compliant ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10'}`}>
+    <div className={`rounded-lg border transition-all ${borderClass}`}>
       <button onClick={onToggle} className="w-full flex items-center justify-between p-4 text-left">
         <div className="flex items-center gap-3">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          {result.compliant ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <XCircle className="w-5 h-5 text-rose-500" />}
+          {isLaborGo ? <CheckCircle2 className={`w-5 h-5 ${iconClass}`} /> : isPartialGo ? <Clock className={`w-5 h-5 ${iconClass}`} /> : <XCircle className={`w-5 h-5 ${iconClass}`} />}
           <div>
             <div className="font-semibold">{result.assembly.name}</div>
-            <div className="text-xs text-muted-foreground">{result.assembly.projectPhase}</div>
+            <div className="text-xs text-muted-foreground">{result.assembly.scopeType} • {result.assembly.minWorkWindowHours}hr min window</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm text-muted-foreground font-mono">{passingCount}/{totalCount}</div>
-          <Badge className={result.compliant ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}>{result.compliant ? "GO" : "HOLD"}</Badge>
+          <Badge className={badgeClass}>{statusLabel}</Badge>
         </div>
       </button>
+      {/* Status message row */}
+      <div className={`px-4 pb-2 text-sm ${isLaborGo ? 'text-emerald-400' : isPartialGo ? 'text-amber-400' : 'text-rose-400'}`}>
+        {result.statusMessage}
+        {result.workWindowHours > 0 && !isLaborGo && (
+          <span className="ml-2 text-muted-foreground">({result.workWindowHours}hr window available)</span>
+        )}
+      </div>
       {expanded && (
         <div className="border-t border-border/30 p-4 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
           {result.componentResults.map(cr => (
@@ -668,6 +652,7 @@ function AssemblyRow({ result, expanded, onToggle }: { result: AssemblyResult; e
               {cr.compliant ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" /> : <XCircle className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />}
               <div>
                 <span className="text-sm font-medium">{cr.component.name}</span>
+                {cr.component.criticalNote && <div className="text-xs text-muted-foreground mt-0.5">{cr.component.criticalNote}</div>}
                 {!cr.compliant && <div className="text-xs text-rose-400 mt-0.5">{cr.reasons.join(" • ")}</div>}
               </div>
             </div>
@@ -716,9 +701,9 @@ function InsightCard({ insight, compact }: { insight: AIInsight; compact?: boole
 }
 
 // ========== AI INTELLIGENCE VIEW ==========
-function IntelligenceView({ insights, scheduleRecs, riskAssessments, conditions }: {
+function IntelligenceView({ insights, scheduleRecs, riskAssessments }: {
   insights: AIInsight[]; scheduleRecs: ReturnType<typeof generateScheduleRecommendations>;
-  riskAssessments: ReturnType<typeof generateRiskAssessments>; conditions: WeatherConditions;
+  riskAssessments: ReturnType<typeof generateRiskAssessments>;
 }) {
   return (
     <div className="space-y-6">
@@ -796,8 +781,8 @@ function RiskCard({ assessment, isToday }: { assessment: ReturnType<typeof gener
 }
 
 // ========== PROJECT CALENDAR VIEW ==========
-function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
-  dailyForecasts: DailyForecast[]; riskAssessments: ReturnType<typeof generateRiskAssessments>;
+function ProjectCalendarView({ dailyForecasts, workLog }: {
+  dailyForecasts: DailyForecast[];
   workLog: WorkLogEntry[];
 }) {
   // Use fixed reference date for SSR consistency (work log stats don't need current date for display)
@@ -953,15 +938,17 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
         icon={<Calendar className="w-4 h-4" />}
       />
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-primary" />5-Day Forecast</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-primary" />5-Day Scope Forecast</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
             {dailyForecasts.slice(0, 5).map((day, i) => {
               const conditions = dailyToWeatherConditions(day);
-              const results = checkAllAssemblies(conditions);
-              const goCount = results.filter(r => r.compliant).length;
-              const risk = riskAssessments[i];
-              return <ForecastCard key={day.date.toISOString()} day={day} goCount={goCount} total={results.length} isToday={i === 0} risk={risk} />;
+              // Convert day's hourly data to WeatherConditions array for work window calculation
+              const dayHourlyConditions = forecastToWeatherConditionsArray(day.hourlyData);
+              const results = checkAllAssemblies(conditions, dayHourlyConditions);
+              // Show how many scopes have a viable work window this day
+              const goCount = results.filter(r => r.hasFullWorkWindow).length;
+              return <ForecastCard key={day.date.toISOString()} day={day} goCount={goCount} total={results.length} isToday={i === 0} />;
             })}
           </div>
         </CardContent>
@@ -970,8 +957,8 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
   );
 }
 
-function ForecastCard({ day, goCount, total, isToday, risk }: {
-  day: DailyForecast; goCount: number; total: number; isToday: boolean; risk: ReturnType<typeof generateRiskAssessments>[0];
+function ForecastCard({ day, goCount, total, isToday }: {
+  day: DailyForecast; goCount: number; total: number; isToday: boolean;
 }) {
   const allGo = goCount === total;
   const someGo = goCount > 0;
@@ -987,7 +974,7 @@ function ForecastCard({ day, goCount, total, isToday, risk }: {
         </div>
         <div className="text-xs text-muted-foreground capitalize mb-2">{day.conditions}</div>
         <div className={`text-2xl font-black ${allGo ? 'text-emerald-500' : someGo ? 'text-amber-500' : 'text-rose-500'}`}>{goCount}/{total}</div>
-        <div className="text-xs text-muted-foreground">GO</div>
+        <div className="text-xs text-muted-foreground">Scopes Viable</div>
       </CardContent>
     </Card>
   );

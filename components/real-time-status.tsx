@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
-  Radio,
   Wifi,
   WifiOff,
   RefreshCw,
@@ -15,11 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Zap,
   Timer,
-  Activity,
-  TrendingUp,
-  Shield,
   Bell,
   X
 } from "lucide-react";
@@ -94,9 +89,11 @@ export default function RealTimeStatus({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Calculate sun times (use current time or fallback to now for SSR)
+  const currentDateString = currentTime?.toDateString() ?? "";
   const { sunrise, sunset } = useMemo(
     () => calculateSunTimes(projectLocation.lat, currentTime || new Date()),
-    [projectLocation.lat, currentTime?.toDateString()]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectLocation.lat, currentDateString]
   );
 
   const fallbackStats: WorkLogStats = {
@@ -112,6 +109,28 @@ export default function RealTimeStatus({
   const progressPercentage = (assemblyGoCount / totalAssemblies) * 100;
   const circumference = 2 * Math.PI * 18; // radius = 18
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
+
+  // Handle refresh - must be defined before the useEffect that uses it
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await onRefresh?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Refresh failed";
+      setAlerts(prev => {
+        const newAlert: StatusAlert = {
+          id: `alert-${Date.now()}`,
+          message,
+          severity: "warning",
+          autoDismiss: 6,
+          timestamp: new Date()
+        };
+        return [newAlert, ...prev].slice(0, 3);
+      });
+    }
+    setIsRefreshing(false);
+    setNextRefreshCountdown(300);
+  }, [onRefresh]);
 
   // Update clock every second - set initial time on client mount
   useEffect(() => {
@@ -135,7 +154,7 @@ export default function RealTimeStatus({
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [handleRefresh]);
 
   // Check data freshness
   useEffect(() => {
@@ -172,21 +191,13 @@ export default function RealTimeStatus({
     };
   }, []);
 
-  // Handle refresh
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await onRefresh?.();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Refresh failed";
-      addAlert({ message, severity: "warning", autoDismiss: 6 });
-    }
-    setIsRefreshing(false);
-    setNextRefreshCountdown(300);
-  };
+  // Dismiss alert
+  const dismissAlert = useCallback((id: string) => {
+    setAlerts(prev => prev.filter(a => a.id !== id));
+  }, []);
 
   // Add alert
-  const addAlert = (alert: Omit<StatusAlert, "id" | "timestamp">) => {
+  const addAlert = useCallback((alert: Omit<StatusAlert, "id" | "timestamp">) => {
     const newAlert: StatusAlert = {
       ...alert,
       id: `alert-${Date.now()}`,
@@ -200,12 +211,7 @@ export default function RealTimeStatus({
         dismissAlert(newAlert.id);
       }, alert.autoDismiss * 1000);
     }
-  };
-
-  // Dismiss alert
-  const dismissAlert = (id: string) => {
-    setAlerts(prev => prev.filter(a => a.id !== id));
-  };
+  }, [dismissAlert]);
 
   // Demo: Add an alert on mount for demonstration
   useEffect(() => {
@@ -217,7 +223,7 @@ export default function RealTimeStatus({
       });
     }, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [addAlert]);
 
   // Format time
   const formatTime = (date: Date) => {

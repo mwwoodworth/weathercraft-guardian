@@ -13,6 +13,15 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Custom rule overrides
+  {
+    rules: {
+      // Allow setState in useEffect for hydration-safe patterns (SSR compatibility)
+      "react-hooks/set-state-in-effect": "warn",
+      // Allow <img> for external images (OpenWeatherMap icons)
+      "@next/next/no-img-element": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

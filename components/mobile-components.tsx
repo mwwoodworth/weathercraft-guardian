@@ -19,7 +19,6 @@ import {
   XCircle,
   Shield
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 
 // ========== MOBILE HOOKS ==========
 export function useIsMobile() {
@@ -49,6 +48,8 @@ export function useOnlineStatus() {
       setShowOffline(true);
     };
 
+    // Hydration-safe initialization
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOnline(navigator.onLine);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -466,13 +467,12 @@ export function SwipeActionItem({
 
 // ========== MOBILE HEADER ==========
 interface MobileHeaderProps {
-  projectName: string;
   onMenuOpen: () => void;
   isOnline: boolean;
   lastUpdated: Date;
 }
 
-export function MobileHeader({ projectName, onMenuOpen, isOnline, lastUpdated }: MobileHeaderProps) {
+export function MobileHeader({ onMenuOpen, isOnline, lastUpdated }: MobileHeaderProps) {
   return (
     <div className="flex items-center justify-between py-3 px-4 bg-card border-b border-border md:hidden safe-area-top">
       <button

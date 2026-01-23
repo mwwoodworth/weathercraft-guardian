@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import { useGuardianStore, type WorkEntry, type DailyLogEntry, type WinterWorkPlan } from "@/lib/store";
 import type { ProjectItem, ActivityEntry } from "@/lib/collaboration";
-import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval, parseISO } from "date-fns";
+import { format, subDays, startOfWeek, endOfWeek, eachDayOfInterval, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -13,17 +13,11 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// Card, CardContent, CardHeader, CardTitle available from @/components/ui/card if needed
+// Badge available from @/components/ui/badge if needed
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+// Select components available from @/components/ui/select if needed
 import {
   FileText,
   Download,
@@ -33,14 +27,10 @@ import {
   CloudRain,
   Sun,
   Thermometer,
-  Wind,
-  Droplets,
   BarChart3,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Clock,
-  Users,
   Hammer,
   Package,
   Shield,
@@ -351,37 +341,37 @@ function ReportPreview({
   activity,
   winterPlan
 }: ReportPreviewProps) {
-  const reportDate = parseISO(date);
-  const generatedAt = new Date();
-
-  // Common header for all reports
-  const ReportHeader = () => (
-    <div className="border-b-2 border-gray-800 pb-4 mb-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-2xl font-bold text-gray-900">WEATHERCRAFT</div>
-          <div className="text-sm text-gray-600">Commercial Roofing Contractors</div>
-          <div className="text-xs text-gray-500 mt-1">
-            Excellence in Weather-Compliant Roofing Solutions
+  // Common header for all reports - memoized JSX element
+  const reportHeader = useMemo(() => {
+    const generatedAt = new Date();
+    return (
+      <div className="border-b-2 border-gray-800 pb-4 mb-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-2xl font-bold text-gray-900">WEATHERCRAFT</div>
+            <div className="text-sm text-gray-600">Commercial Roofing Contractors</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Excellence in Weather-Compliant Roofing Solutions
+            </div>
           </div>
-        </div>
-        <div className="text-right">
-          <div className="text-sm font-semibold text-gray-900">{projectName}</div>
-          <div className="text-xs text-gray-600">{projectLocation}</div>
-          <div className="text-xs text-gray-500 mt-2">
-            Generated: {format(generatedAt, "MMM d, yyyy h:mm a")}
+          <div className="text-right">
+            <div className="text-sm font-semibold text-gray-900">{projectName}</div>
+            <div className="text-xs text-gray-600">{projectLocation}</div>
+            <div className="text-xs text-gray-500 mt-2">
+              Generated: {format(generatedAt, "MMM d, yyyy h:mm a")}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }, [projectName, projectLocation]);
 
   // Render based on report type
   switch (type) {
     case "daily_summary":
       return <DailySummaryReport
         date={date}
-        header={<ReportHeader />}
+        header={reportHeader}
         workEntries={workEntries}
         dailyLogs={dailyLogs}
         items={items}
@@ -390,14 +380,14 @@ function ReportPreview({
     case "weekly_progress":
       return <WeeklyProgressReport
         date={date}
-        header={<ReportHeader />}
+        header={reportHeader}
         workEntries={workEntries}
         dailyLogs={dailyLogs}
       />;
     case "weather_delay":
       return <WeatherDelayReport
         date={date}
-        header={<ReportHeader />}
+        header={reportHeader}
         workEntries={workEntries}
         winterPlan={winterPlan}
         items={items}
@@ -405,7 +395,7 @@ function ReportPreview({
     case "material_usage":
       return <MaterialUsageReport
         date={date}
-        header={<ReportHeader />}
+        header={reportHeader}
         dailyLogs={dailyLogs}
       />;
     default:
@@ -419,7 +409,8 @@ function DailySummaryReport({
   header,
   workEntries,
   dailyLogs,
-  items,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  items: _items,
   activity
 }: {
   date: string;
@@ -432,12 +423,6 @@ function DailySummaryReport({
   const reportDate = parseISO(date);
   const dayEntry = workEntries[date];
   const dayLog = dailyLogs.find(log => log.date === date);
-
-  // Get items updated on this date
-  const dayItems = items.filter(item => {
-    const itemDate = format(item.updatedAt, "yyyy-MM-dd");
-    return itemDate === date;
-  });
 
   // Get activity for this date
   const dayActivity = activity.filter(act => {
@@ -871,7 +856,8 @@ function WeatherDelayReport({
   header,
   workEntries,
   winterPlan,
-  items
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  items: _items
 }: {
   date: string;
   header: React.ReactNode;
@@ -881,12 +867,6 @@ function WeatherDelayReport({
 }) {
   const reportDate = parseISO(date);
   const dayEntry = workEntries[date];
-
-  // Find weather-related items
-  const weatherItems = items.filter(item =>
-    item.type === "delay" &&
-    item.tags.includes("weather")
-  );
 
   // Get all weather holds in the last 30 days
   const recentWeatherHolds = useMemo(() => {

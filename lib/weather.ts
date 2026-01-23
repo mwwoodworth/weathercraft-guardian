@@ -136,6 +136,34 @@ export function toWeatherConditions(
   };
 }
 
+// Convert hourly forecast array to WeatherConditions array for work window calculation
+export function forecastToWeatherConditionsArray(forecast: WeatherData[]): WeatherConditions[] {
+  return forecast.map((hour, i) => {
+    // Determine temperature trend by looking at next hour
+    let tempTrend: "rising" | "falling" | "stable" = "stable";
+    if (i < forecast.length - 1) {
+      const nextTemp = forecast[i + 1].temp;
+      const diff = nextTemp - hour.temp;
+      if (diff > 1) tempTrend = "rising";
+      else if (diff < -1) tempTrend = "falling";
+    }
+
+    const isPrecip = hour.description.toLowerCase().includes("rain") ||
+      hour.description.toLowerCase().includes("snow") ||
+      hour.description.toLowerCase().includes("drizzle") ||
+      hour.description.toLowerCase().includes("sleet");
+
+    return {
+      temp: hour.temp,
+      tempTrend,
+      windSpeed: hour.wind_speed,
+      humidity: hour.humidity,
+      isPrecipitating: isPrecip,
+      precipProbability: Math.round((hour.pop || 0) * 100)
+    };
+  });
+}
+
 // Convert DailyForecast to WeatherConditions (use worst-case for the day)
 export function dailyToWeatherConditions(daily: DailyForecast): WeatherConditions {
   // For daily compliance, use conservative estimates

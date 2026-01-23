@@ -36,7 +36,6 @@ import {
   X,
   Loader2,
   Calendar,
-  Users,
   ClipboardList
 } from "lucide-react";
 

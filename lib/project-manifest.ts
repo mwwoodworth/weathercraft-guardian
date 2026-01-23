@@ -149,7 +149,7 @@ function buildFileEntry(relPath: string, stats: fs.Stats): ProjectFile | null {
   const override = FILE_OVERRIDES[relPath];
   const fileName = path.basename(relPath);
 
-  const category = override?.category ?? inferCategory(relPath, ext, fileName);
+  const category = override?.category ?? inferCategory(relPath, ext);
   if (!category) return null;
 
   return {
@@ -166,7 +166,7 @@ function buildFileEntry(relPath: string, stats: fs.Stats): ProjectFile | null {
   };
 }
 
-function inferCategory(relPath: string, ext: string, fileName: string): ProjectFileCategory | null {
+function inferCategory(relPath: string, ext: string): ProjectFileCategory | null {
   const lower = relPath.toLowerCase();
 
   if (lower.includes("project management")) {
