@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   CalendarDays,
   ClipboardCheck,
@@ -92,11 +92,15 @@ export default function WinterWorkPlan({
     }));
   }, [packages, dailyForecasts]);
 
-  const planDate = new Date().toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
+  // Hydration-safe date - only render on client
+  const [planDate, setPlanDate] = useState<string | null>(null);
+  useEffect(() => {
+    setPlanDate(new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    }));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -126,7 +130,7 @@ export default function WinterWorkPlan({
               </div>
               <div className="text-right">
                 <div className="text-xs text-muted-foreground">Plan Date</div>
-                <div className="text-lg font-semibold text-foreground">{planDate}</div>
+                <div className="text-lg font-semibold text-foreground">{planDate || "Loading..."}</div>
                 <div className="text-xs text-muted-foreground mt-2">Prepared By</div>
                 <div className="text-sm font-medium text-foreground">Weathercraft Guardian</div>
               </div>

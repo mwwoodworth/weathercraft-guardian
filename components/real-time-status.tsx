@@ -85,17 +85,18 @@ export default function RealTimeStatus({
   workLogStats,
   onRefresh
 }: RealTimeStatusProps) {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Initialize as null to avoid hydration mismatch - will be set on client only
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [isConnected, setIsConnected] = useState(true);
   const [dataFreshness, setDataFreshness] = useState<"fresh" | "stale" | "old">("fresh");
   const [nextRefreshCountdown, setNextRefreshCountdown] = useState(300); // 5 minutes
   const [alerts, setAlerts] = useState<StatusAlert[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Calculate sun times
+  // Calculate sun times (use current time or fallback to now for SSR)
   const { sunrise, sunset } = useMemo(
-    () => calculateSunTimes(projectLocation.lat, currentTime),
-    [projectLocation.lat, currentTime.toDateString()]
+    () => calculateSunTimes(projectLocation.lat, currentTime || new Date()),
+    [projectLocation.lat, currentTime?.toDateString()]
   );
 
   const fallbackStats: WorkLogStats = {
@@ -112,8 +113,9 @@ export default function RealTimeStatus({
   const circumference = 2 * Math.PI * 18; // radius = 18
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
-  // Update clock every second
+  // Update clock every second - set initial time on client mount
   useEffect(() => {
+    setCurrentTime(new Date()); // Set initial time on client
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -277,15 +279,15 @@ export default function RealTimeStatus({
                 <div className="relative bg-card border border-primary/30 rounded-xl p-3 shadow-lg shadow-primary/10">
                   <Clock className="w-5 h-5 text-primary mb-1 mx-auto" />
                   <div className="font-mono text-2xl font-bold tracking-wider text-foreground">
-                    {formatTime(currentTime)}
+                    {currentTime ? formatTime(currentTime) : "--:--:--"}
                   </div>
                   <div className="text-xs text-muted-foreground text-center mt-1 flex items-center gap-1 justify-center">
                     <Calendar className="w-3 h-3" />
-                    {currentTime.toLocaleDateString("en-US", {
+                    {currentTime ? currentTime.toLocaleDateString("en-US", {
                       weekday: "short",
                       month: "short",
                       day: "numeric"
-                    })}
+                    }) : "---"}
                   </div>
                 </div>
               </div>
@@ -304,13 +306,13 @@ export default function RealTimeStatus({
                 </div>
                 {/* Daylight indicator */}
                 <div className="flex items-center gap-1 mt-1">
-                  {currentTime >= sunrise && currentTime <= sunset ? (
+                  {currentTime && currentTime >= sunrise && currentTime <= sunset ? (
                     <span className="flex items-center gap-1 text-xs text-amber-400">
                       <Sun className="w-3 h-3" /> Daylight
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-xs text-slate-400">
-                      <Sun className="w-3 h-3 opacity-50" /> Night
+                      <Sun className="w-3 h-3 opacity-50" /> {currentTime ? "Night" : "---"}
                     </span>
                   )}
                 </div>
