@@ -800,7 +800,8 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
   dailyForecasts: DailyForecast[]; riskAssessments: ReturnType<typeof generateRiskAssessments>;
   workLog: WorkLogEntry[];
 }) {
-  const stats = useMemo(() => getWorkLogStats(workLog, new Date()), [workLog]);
+  // Use fixed reference date for SSR consistency (work log stats don't need current date for display)
+  const stats = useMemo(() => getWorkLogStats(workLog), [workLog]);
   const workLogMap = useMemo(() => buildWorkLogMap(workLog), [workLog]);
   const months = useMemo(() => getWorkLogMonths(workLog), [workLog]);
 

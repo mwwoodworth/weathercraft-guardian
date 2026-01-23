@@ -137,22 +137,31 @@ const MOCK_INVENTORY: InventoryItem[] = [
 ];
 
 // Mock usage data for the week
-const MOCK_USAGE: UsageEntry[] = [
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), quantity: 8, area: "Area A North", waste: 0.5 },
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), quantity: 10, area: "Area A Center", waste: 0.8 },
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), quantity: 0, area: "Weather Hold", waste: 0 },
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), quantity: 7, area: "Area A South", waste: 0.3 },
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), quantity: 5, area: "Area A Finish", waste: 0.2 },
-  { materialId: "green-lock-plus", date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), quantity: 0, area: "Weekend", waste: 0 },
-  { materialId: "green-lock-plus", date: new Date(), quantity: 6, area: "Area B Start", waste: 0.4 },
-  { materialId: "optimax-membrane", date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), quantity: 4, area: "Area A North", waste: 0.2 },
-  { materialId: "optimax-membrane", date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), quantity: 5, area: "Area A Center", waste: 0.3 },
-  { materialId: "optimax-membrane", date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), quantity: 3, area: "Area A South", waste: 0.1 },
-  { materialId: "optimax-membrane", date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), quantity: 4, area: "Area A Finish", waste: 0.2 },
-  { materialId: "optimax-membrane", date: new Date(), quantity: 3, area: "Area B Start", waste: 0.1 },
-  { materialId: "garla-flex", date: new Date(), quantity: 6, area: "Flashings", waste: 0.5 },
-  { materialId: "tuff-stuff-ms", date: new Date(), quantity: 8, area: "Sealing", waste: 0.3 },
-];
+// Helper to generate mock usage data with deterministic dates (relative to a fixed base)
+function generateMockUsage(): UsageEntry[] {
+  // Use a fixed base date to avoid hydration mismatch
+  const baseDate = new Date(2025, 0, 20); // Jan 20, 2025 as fixed reference
+  const day = (offset: number) => new Date(baseDate.getTime() + offset * 24 * 60 * 60 * 1000);
+
+  return [
+    { materialId: "green-lock-plus", date: day(-6), quantity: 8, area: "Area A North", waste: 0.5 },
+    { materialId: "green-lock-plus", date: day(-5), quantity: 10, area: "Area A Center", waste: 0.8 },
+    { materialId: "green-lock-plus", date: day(-4), quantity: 0, area: "Weather Hold", waste: 0 },
+    { materialId: "green-lock-plus", date: day(-3), quantity: 7, area: "Area A South", waste: 0.3 },
+    { materialId: "green-lock-plus", date: day(-2), quantity: 5, area: "Area A Finish", waste: 0.2 },
+    { materialId: "green-lock-plus", date: day(-1), quantity: 0, area: "Weekend", waste: 0 },
+    { materialId: "green-lock-plus", date: day(0), quantity: 6, area: "Area B Start", waste: 0.4 },
+    { materialId: "optimax-membrane", date: day(-6), quantity: 4, area: "Area A North", waste: 0.2 },
+    { materialId: "optimax-membrane", date: day(-5), quantity: 5, area: "Area A Center", waste: 0.3 },
+    { materialId: "optimax-membrane", date: day(-3), quantity: 3, area: "Area A South", waste: 0.1 },
+    { materialId: "optimax-membrane", date: day(-2), quantity: 4, area: "Area A Finish", waste: 0.2 },
+    { materialId: "optimax-membrane", date: day(0), quantity: 3, area: "Area B Start", waste: 0.1 },
+    { materialId: "garla-flex", date: day(0), quantity: 6, area: "Flashings", waste: 0.5 },
+    { materialId: "tuff-stuff-ms", date: day(0), quantity: 8, area: "Sealing", waste: 0.3 },
+  ];
+}
+
+const MOCK_USAGE: UsageEntry[] = generateMockUsage();
 
 type MaterialTrackerProps = {
   currentTemp: number;
