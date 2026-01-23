@@ -35,6 +35,7 @@ export default function ProjectMap({
   const mapInstance = useRef<unknown>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [canvasFound, setCanvasFound] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current || !MAPBOX_TOKEN) {
@@ -102,6 +103,15 @@ export default function ProjectMap({
         map.on("load", () => {
           if (!isMounted) return;
           setIsLoading(false);
+
+          // Check if canvas exists
+          const canvas = container.querySelector("canvas");
+          if (canvas) {
+            setCanvasFound(true);
+            console.log("Map canvas found:", canvas.width, "x", canvas.height);
+          } else {
+            console.error("No canvas found in map container");
+          }
 
           // Add building outline
           map.addSource("building-outline", {
@@ -205,7 +215,7 @@ export default function ProjectMap({
   }, [lat, lon, projectName, location, systemStatus, currentTemp]);
 
   // Debug info
-  const debugInfo = `Token: ${MAPBOX_TOKEN ? "YES (" + MAPBOX_TOKEN.substring(0, 10) + "...)" : "NO"}, Loading: ${isLoading}, Error: ${mapError || "none"}`;
+  const debugInfo = `Token: ${MAPBOX_TOKEN ? "YES" : "NO"}, Loading: ${isLoading}, Error: ${mapError || "none"}, Canvas: ${canvasFound ? "YES" : "NO"}`;
 
   // Static fallback when no token
   if (!MAPBOX_TOKEN) {
