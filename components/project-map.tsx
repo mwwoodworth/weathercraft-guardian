@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 // Use the same Mapbox token approach as ERP
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
-// Dynamically import mapbox-gl to avoid SSR issues
-let mapboxgl: typeof import("mapbox-gl").default | null = null;
+// Set token if available
+if (typeof window !== "undefined" && MAPBOX_TOKEN) {
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+}
 
 type ProjectMapProps = {
   lat: number;
@@ -36,36 +39,20 @@ export default function ProjectMap({
   currentTemp
 }: ProjectMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<import("mapbox-gl").Map | null>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
   const [mounted, setMounted] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Client-only rendering - dynamically import mapbox-gl
+  // Client-only rendering
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const loadMapbox = async () => {
-      try {
-        const mb = await import("mapbox-gl");
-        mapboxgl = mb.default;
-        if (MAPBOX_TOKEN) {
-          mapboxgl.accessToken = MAPBOX_TOKEN;
-        }
-        setMounted(true);
-      } catch (err) {
-        console.error("Failed to load Mapbox GL:", err);
-        setMapError("Failed to load map library");
-      }
-    };
-
-    loadMapbox();
+    setMounted(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (!mounted || !mapContainer.current || !MAPBOX_TOKEN || !mapboxgl) return;
+    if (!mounted || !mapContainer.current || !MAPBOX_TOKEN) return;
 
     try {
       // Initialize map
@@ -85,7 +72,7 @@ export default function ProjectMap({
           : "#ef4444";
 
       map.current.on("load", () => {
-        if (!map.current || !mapboxgl) return;
+        if (!map.current) return;
         setMapLoaded(true);
 
         // Add building outline
