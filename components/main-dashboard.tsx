@@ -132,16 +132,25 @@ function Sparkline({ data, color = "#22c55e", h = 28 }: { data: number[]; color?
   );
 }
 
-// Live clock with real-time updates
+// Live clock with real-time updates (hydration-safe)
 function LiveClock() {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<string | null>(null);
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
+    // Only run on client to avoid hydration mismatch
+    const updateTime = () => {
+      setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  if (!time) {
+    return <span className="text-xs text-muted-foreground font-mono tabular-nums">--:--:--</span>;
+  }
   return (
     <span className="text-xs text-muted-foreground font-mono tabular-nums">
-      {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      {time}
     </span>
   );
 }
@@ -387,6 +396,7 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
   project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[]; openItems: number; criticalItems: number;
   workLogStats: WorkLogStats; lastWeatherUpdate?: Date; onRefresh?: () => void | Promise<void>;
 }) {
+  const [showHoldDetails, setShowHoldDetails] = useState(false);
   const TrendIcon = conditions.tempTrend === "rising" ? TrendingUp : conditions.tempTrend === "falling" ? TrendingDown : Minus;
   const trendColor = conditions.tempTrend === "rising" ? "text-emerald-400" : conditions.tempTrend === "falling" ? "text-rose-400" : "text-muted-foreground";
 
@@ -400,52 +410,55 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         sunset={weather.sunset}
       />
 
-      {/* SYSTEM STATUS */}
+      {/* SYSTEM STATUS - Compact header */}
       <div className={`relative overflow-hidden rounded-xl border-2 ${systemCompliant ? 'border-emerald-500/50 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5' : 'border-rose-500/50 bg-gradient-to-br from-rose-500/10 to-rose-500/5'}`}>
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-32 translate-x-32" />
-        <div className="relative p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
-              <div className={`p-4 rounded-2xl ${systemCompliant ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
-                {systemCompliant ? <CheckCircle2 className="w-16 h-16 text-emerald-500" /> : <XCircle className="w-16 h-16 text-rose-500" />}
+        <div className="relative p-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-xl ${systemCompliant ? 'bg-emerald-500/20' : 'bg-rose-500/20'}`}>
+                {systemCompliant ? <CheckCircle2 className="w-10 h-10 text-emerald-500" /> : <XCircle className="w-10 h-10 text-rose-500" />}
               </div>
               <div>
-                <h2 className={`text-4xl font-black tracking-tight ${systemCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <h2 className={`text-2xl lg:text-3xl font-black tracking-tight ${systemCompliant ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {systemCompliant ? "ALL SYSTEMS GO" : "SYSTEM HOLD"}
                 </h2>
-                <p className="text-lg text-muted-foreground mt-1">{goCount}/{assemblyResults.length} Assemblies Cleared</p>
-                <div className="flex items-center gap-4 mt-2">
-                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Sparkles className="w-4 h-4 text-purple-400" /> AI Confidence: High
+                <p className="text-sm text-muted-foreground">{goCount}/{assemblyResults.length} Assemblies Cleared</p>
+                <div className="flex flex-wrap items-center gap-3 mt-1">
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Sparkles className="w-3 h-3 text-purple-400" /> AI Confidence: High
                   </span>
-                  <span className="flex items-center gap-1 text-sm text-amber-400">
-                    <AlertCircle className="w-4 h-4" /> {openItems} Open Items
-                  </span>
+                  {openItems > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-amber-400">
+                      <AlertCircle className="w-3 h-3" /> {openItems} Open Items
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <QuickStat label="Temp" value={`${Math.round(conditions.temp)}°F`} trend={<TrendIcon className={`w-4 h-4 ${trendColor}`} />} />
-              <QuickStat label="Wind" value={`${Math.round(conditions.windSpeed)} mph`} alert={conditions.windSpeed > 20} />
-              <QuickStat label="Precip" value={`${conditions.precipProbability}%`} alert={conditions.precipProbability > 40} />
-              <QuickStat label="Humidity" value={`${conditions.humidity}%`} alert={conditions.humidity > 80} />
+            <div className="grid grid-cols-4 gap-2 lg:gap-3">
+              <QuickStat label="TEMP" value={`${Math.round(conditions.temp)}°F`} trend={<TrendIcon className={`w-3 h-3 ${trendColor}`} />} />
+              <QuickStat label="WIND" value={`${Math.round(conditions.windSpeed)} mph`} alert={conditions.windSpeed > 20} />
+              <QuickStat label="PRECIP" value={`${conditions.precipProbability}%`} alert={conditions.precipProbability > 40} />
+              <QuickStat label="HUMIDITY" value={`${conditions.humidity}%`} alert={conditions.humidity > 80} />
             </div>
           </div>
         </div>
       </div>
 
+      {/* DECISION SUPPORT - AI Analysis + Map side by side */}
       <SectionHeader
         title="Decision Support"
         subtitle="Forecast-driven recommendations, AI insights, and project context."
         icon={<Brain className="w-4 h-4" />}
       />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
               <Brain className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" />
               <div>
-                <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI Analysis</div>
+                <div className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-1">AI ANALYSIS</div>
                 <p className="text-sm leading-relaxed">{executiveSummary}</p>
               </div>
             </div>
@@ -453,13 +466,13 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 pt-3 px-4">
             <CardTitle className="flex items-center gap-2 text-sm">
               <MapPin className="w-4 h-4 text-primary" />
               Project Location
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-4 pt-0">
+          <CardContent className="p-3 pt-0">
             <ProjectMap
               lat={project.lat}
               lon={project.lon}
@@ -472,12 +485,14 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         </Card>
       </div>
 
+      {/* Priority Alerts - Only show if there are insights */}
       {topInsights.length > 0 && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           {topInsights.map(insight => <InsightCard key={insight.id} insight={insight} compact />)}
         </div>
       )}
 
+      {/* ASSEMBLIES - Compact Status Grid */}
       <SectionHeader
         title="Assemblies & Compliance"
         subtitle="System eligibility, component holds, and specification constraints."
@@ -485,53 +500,70 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         badge={`${goCount}/${assemblyResults.length} GO`}
       />
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-3 pt-4">
           <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Assembly Status</span>
-            <Badge variant="outline" className="font-mono">{goCount}/{assemblyResults.length} GO</Badge>
+            <span className="flex items-center gap-2 text-base"><Target className="w-4 h-4 text-primary" />Assembly Status</span>
+            <Badge variant="outline" className="font-mono text-xs">{goCount}/{assemblyResults.length} GO</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 pt-0">
           {assemblyResults.map(result => (
             <AssemblyRow key={result.assembly.id} result={result} expanded={expandedAssemblies.has(result.assembly.id)} onToggle={() => toggleAssembly(result.assembly.id)} />
           ))}
         </CardContent>
       </Card>
 
+      {/* Hold Details - Collapsible */}
       {!systemCompliant && (
         <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-rose-400"><AlertTriangle className="w-5 h-5" />Installation Hold - Flagged Components</CardTitle>
+          <CardHeader className="pb-3 cursor-pointer" onClick={() => setShowHoldDetails(!showHoldDetails)}>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-rose-400 text-base">
+                <AlertTriangle className="w-4 h-4" />
+                Installation Hold - Flagged Components
+              </span>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-rose-500/20 text-rose-300 text-xs">{failingAssemblies.reduce((acc, r) => acc + r.componentResults.filter(cr => !cr.compliant).length, 0)} issues</Badge>
+                {showHoldDetails ? <ChevronDown className="w-4 h-4 text-rose-400" /> : <ChevronRight className="w-4 h-4 text-rose-400" />}
+              </div>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {failingAssemblies.map(result => (
-                <div key={result.assembly.id} className="border-b border-rose-500/20 pb-4 last:border-0">
-                  <div className="font-semibold text-rose-300 mb-2">{result.assembly.name}</div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {result.componentResults.filter(cr => !cr.compliant).map(cr => (
-                      <div key={cr.component.id} className="bg-rose-500/10 rounded-lg p-3 border border-rose-500/20">
-                        <div className="font-medium text-sm">{cr.component.name}</div>
-                        {cr.component.criticalNote && <div className="text-xs text-rose-300/70 mt-1 italic">{cr.component.criticalNote}</div>}
-                        <div className="mt-2 space-y-1">
-                          {cr.reasons.map((r, i) => <div key={i} className="flex items-center gap-2 text-xs text-rose-300"><XCircle className="w-3 h-3 flex-shrink-0" /> {r}</div>)}
+          <AnimatePresence>
+            {showHoldDetails && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    {failingAssemblies.map(result => (
+                      <div key={result.assembly.id} className="border-b border-rose-500/20 pb-3 last:border-0 last:pb-0">
+                        <div className="font-semibold text-rose-300 text-sm mb-2">{result.assembly.name}</div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {result.componentResults.filter(cr => !cr.compliant).map(cr => (
+                            <div key={cr.component.id} className="bg-rose-500/10 rounded-lg p-2.5 border border-rose-500/20">
+                              <div className="font-medium text-xs">{cr.component.name}</div>
+                              {cr.component.criticalNote && <div className="text-[10px] text-rose-300/70 mt-0.5 italic">{cr.component.criticalNote}</div>}
+                              <div className="mt-1.5 space-y-0.5">
+                                {cr.reasons.map((r, i) => <div key={i} className="flex items-center gap-1.5 text-[10px] text-rose-300"><XCircle className="w-2.5 h-2.5 flex-shrink-0" /> {r}</div>)}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+                </CardContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       )}
 
+      {/* OPERATIONS CENTER */}
       <SectionHeader
         title="Operations Center"
         subtitle="Live status, crew safety, and site readiness."
         icon={<Activity className="w-4 h-4" />}
       />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <RealTimeStatus
           projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
           lastWeatherUpdate={lastWeatherUpdate}
@@ -544,12 +576,13 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
         <CrewSafety weather={weather} />
       </div>
 
+      {/* MATERIALS & PROGRESS */}
       <SectionHeader
         title="Materials & Progress"
         subtitle="Temperature-sensitive inventory status and production tracking."
         icon={<Hammer className="w-4 h-4" />}
       />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <MaterialTracker
           currentTemp={weather.temp}
           windSpeed={weather.wind_speed}
@@ -564,9 +597,9 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
 
 function QuickStat({ label, value, trend, alert }: { label: string; value: string; trend?: React.ReactNode; alert?: boolean; }) {
   return (
-    <div className={`p-3 rounded-lg ${alert ? 'bg-amber-500/20' : 'bg-white/5'}`}>
-      <div className="text-xs text-muted-foreground uppercase tracking-wider">{label}</div>
-      <div className="text-xl font-bold font-mono flex items-center gap-2">{value}{trend}</div>
+    <div className={`px-2 py-1.5 lg:px-3 lg:py-2 rounded-lg ${alert ? 'bg-amber-500/20' : 'bg-white/5'}`}>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</div>
+      <div className="text-base lg:text-lg font-bold font-mono flex items-center gap-1">{value}{trend}</div>
     </div>
   );
 }

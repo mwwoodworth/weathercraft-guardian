@@ -148,9 +148,54 @@ export default function ProjectMap({
   }, [mounted, lat, lon, projectName, location, systemStatus, currentTemp]);
 
   if (!MAPBOX_TOKEN) {
+    // Static fallback with building info when no token
+    const statusColor = systemStatus === "go" ? "bg-emerald-500" : systemStatus === "partial" ? "bg-amber-500" : "bg-rose-500";
+    const statusText = systemStatus === "go" ? "GO" : systemStatus === "partial" ? "PARTIAL" : "NO-GO";
     return (
-      <div className="h-[300px] bg-muted rounded-lg flex items-center justify-center">
-        <span className="text-muted-foreground text-sm">Map requires MAPBOX_TOKEN</span>
+      <div className="relative h-[300px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-lg overflow-hidden border border-border">
+        {/* Satellite-like background pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.5)_100%)]" />
+          <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
+        </div>
+
+        {/* Building indicator */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative">
+            {/* Building outline (simplified) */}
+            <div className={`w-32 h-20 border-2 ${statusColor.replace('bg-', 'border-')} rounded-sm opacity-60`}>
+              <div className={`absolute inset-0 ${statusColor} opacity-20`} />
+            </div>
+            {/* Center marker */}
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 ${statusColor} rounded-full flex items-center justify-center border-2 border-white shadow-lg`}>
+              <span className="text-white text-sm font-bold">{systemStatus === "go" ? "✓" : systemStatus === "partial" ? "!" : "✗"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Info overlay */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white font-semibold text-sm">{projectName}</div>
+              <div className="text-white/60 text-xs">{location}</div>
+            </div>
+            <div className="text-right">
+              {currentTemp !== undefined && <div className="text-white font-mono text-lg">{Math.round(currentTemp)}°F</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Status badge */}
+        <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-md px-2.5 py-1.5">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${statusColor}`} />
+            <span className="text-white text-xs font-medium">{statusText}</span>
+          </div>
+        </div>
+
+        {/* Scale indicator */}
+        <div className="absolute bottom-3 left-3 bg-black/50 px-2 py-1 rounded text-[10px] text-white/60 font-mono">30 m</div>
       </div>
     );
   }
