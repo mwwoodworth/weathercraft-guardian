@@ -158,12 +158,14 @@ type MaterialTrackerProps = {
   currentTemp: number;
   windSpeed: number;
   isPrecipitating: boolean;
+  tempTrend?: "rising" | "falling" | "stable";
 };
 
 export default function MaterialTracker({
   currentTemp,
   windSpeed,
-  isPrecipitating
+  isPrecipitating,
+  tempTrend
 }: MaterialTrackerProps) {
   const [expandedMaterials, setExpandedMaterials] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"cards" | "inventory" | "usage">("cards");
@@ -181,10 +183,10 @@ export default function MaterialTracker({
   const materialCompliance = useMemo(() => {
     return MATERIALS.map(material => ({
       material,
-      compliance: checkCompliance(material.id, currentTemp, windSpeed, isPrecipitating),
+      compliance: checkCompliance(material.id, currentTemp, windSpeed, isPrecipitating, tempTrend),
       inventory: MOCK_INVENTORY.find(i => i.materialId === material.id)
     }));
-  }, [currentTemp, windSpeed, isPrecipitating]);
+  }, [currentTemp, windSpeed, isPrecipitating, tempTrend]);
 
   const goCount = materialCompliance.filter(m => m.compliance.compliant).length;
   const lowStockCount = MOCK_INVENTORY.filter(i => i.quantity <= i.reorderPoint).length;

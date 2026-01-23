@@ -12,6 +12,8 @@ export type WeatherData = {
   icon: string;
   pop: number; // Probability of precipitation (0-1)
   dt: number;
+  sunrise?: number;
+  sunset?: number;
 };
 
 export type DailyForecast = {

@@ -108,3 +108,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: #0f172a !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .print-area * {
+    color: #0f172a !important;
+  }
+}
+
+@layer base {
+  .font-display {
+    font-family: var(--font-space-grotesk), var(--font-geist-sans), system-ui, sans-serif;
+  }
+}

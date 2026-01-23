@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 
@@ -22,6 +22,9 @@ import {
 import {
   WeatherData,
   DailyForecast,
+  getCurrentWeather,
+  getForecast,
+  groupForecastByDay,
   toWeatherConditions,
   dailyToWeatherConditions
 } from "@/lib/weather";
@@ -34,32 +37,29 @@ import {
   type RiskLevel
 } from "@/lib/ai-insights";
 import {
-  DEMO_ITEMS,
-  DEMO_ACTIVITY,
-  ITEM_TYPE_CONFIG,
-  STATUS_CONFIG,
-  PRIORITY_CONFIG,
-  STAKEHOLDER_CONFIG,
-  type ProjectItem,
-  type ActivityEntry
-} from "@/lib/collaboration";
+  B140_WORK_LOG,
+  buildWorkLogMap,
+  getWorkLogMonths,
+  getWorkLogStats,
+  type WorkLogEntry,
+  type WorkLogStats
+} from "@/lib/work-log";
+import type { ProjectManifest } from "@/lib/project-types";
 import { PROJECTS } from "@/lib/config";
 import WeatherVisualization from "@/components/weather-viz";
 import RealTimeStatus from "@/components/real-time-status";
 import CrewSafety from "@/components/crew-safety";
 import MaterialTracker from "@/components/material-tracker";
 import ProjectProgress from "@/components/project-progress";
+import ProjectHub from "@/components/project-hub";
+import WinterWorkPlan from "@/components/winter-work-plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Wind,
-  Droplets,
-  Thermometer,
   AlertTriangle,
   CheckCircle2,
   XCircle,
   Calendar,
-  FileText,
   MapPin,
   TrendingUp,
   TrendingDown,
@@ -68,7 +68,6 @@ import {
   FolderOpen,
   ChevronDown,
   ChevronRight,
-  ExternalLink,
   Brain,
   Sparkles,
   Lightbulb,
@@ -78,22 +77,10 @@ import {
   Zap,
   Activity,
   BarChart3,
-  Users,
-  MessageSquare,
-  ClipboardList,
   AlertCircle,
-  HelpCircle,
-  FileCheck,
-  Plus,
-  Filter,
-  Search,
   CalendarDays,
-  Sun,
-  CloudRain,
   Snowflake,
-  HardHat,
-  Hammer,
-  Flame
+  Hammer
 } from "lucide-react";
 
 // ========== PREMIUM ANIMATED COMPONENTS ==========
@@ -164,47 +151,61 @@ type MainDashboardProps = {
   initialForecast: WeatherData[];
   dailyForecasts: DailyForecast[];
   defaultProject: typeof PROJECTS[0];
+  projectManifest: ProjectManifest;
 };
 
-type TabId = "dashboard" | "calendar" | "intelligence" | "collaboration" | "documents";
-
-// Demo work history data - in production this would come from database
-const WORK_HISTORY: Record<string, { type: "worked" | "weather_hold" | "weekend" | "scheduled"; notes?: string; sqft?: number }> = {
-  "2024-01-08": { type: "worked", notes: "Base sheet Area A - North section", sqft: 1200 },
-  "2024-01-09": { type: "worked", notes: "Base sheet Area A - Center section", sqft: 1400 },
-  "2024-01-10": { type: "weather_hold", notes: "Rain - 0.5\" precipitation" },
-  "2024-01-11": { type: "worked", notes: "Base sheet Area A - South section", sqft: 1100 },
-  "2024-01-12": { type: "worked", notes: "Completed Area A base sheet", sqft: 900 },
-  "2024-01-13": { type: "weekend" },
-  "2024-01-14": { type: "weekend" },
-  "2024-01-15": { type: "weather_hold", notes: "Temp 32°F - Below adhesive threshold" },
-  "2024-01-16": { type: "weather_hold", notes: "Temp 35°F - Below adhesive threshold" },
-  "2024-01-17": { type: "worked", notes: "Cap sheet Area A - Started", sqft: 800 },
-  "2024-01-18": { type: "worked", notes: "Cap sheet Area A - Progress", sqft: 1100 },
-  "2024-01-19": { type: "worked", notes: "Cap sheet Area A - Complete, flashings started", sqft: 600 },
-  "2024-01-20": { type: "weekend" },
-  "2024-01-21": { type: "weekend" },
-  "2024-01-22": { type: "scheduled", notes: "Area B base sheet planned" },
-  "2024-01-23": { type: "scheduled", notes: "Area B base sheet" },
-  "2024-01-24": { type: "scheduled", notes: "Area B cap sheet" },
-};
+type TabId = "dashboard" | "calendar" | "intelligence" | "hub" | "winter";
 
 export default function MainDashboard({
   initialWeather,
   initialForecast,
-  dailyForecasts,
-  defaultProject
+  dailyForecasts: initialDailyForecasts,
+  defaultProject,
+  projectManifest
 }: MainDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [expandedAssemblies, setExpandedAssemblies] = useState<Set<string>>(new Set());
-  const [lastUpdated] = useState(new Date());
+  const [weather, setWeather] = useState<WeatherData>(initialWeather);
+  const [forecast, setForecast] = useState<WeatherData[]>(initialForecast);
+  const [dailyForecasts, setDailyForecasts] = useState<DailyForecast[]>(initialDailyForecasts);
+  const [lastUpdated, setLastUpdated] = useState<Date | undefined>(new Date());
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
-  const conditions = toWeatherConditions(initialWeather, initialForecast);
+  const refreshWeather = useCallback(async () => {
+    setWeatherError(null);
+    try {
+      const [current, hourly] = await Promise.all([
+        getCurrentWeather(defaultProject.lat, defaultProject.lon),
+        getForecast(defaultProject.lat, defaultProject.lon)
+      ]);
+      setWeather(current);
+      setForecast(hourly);
+      setDailyForecasts(groupForecastByDay(hourly));
+      setLastUpdated(new Date());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Weather update failed";
+      setWeatherError(message);
+    }
+  }, [defaultProject.lat, defaultProject.lon]);
+
+  useEffect(() => {
+    refreshWeather();
+  }, [refreshWeather]);
+
+  useEffect(() => {
+    if (activeTab === "calendar" || activeTab === "winter") {
+      refreshWeather();
+    }
+  }, [activeTab, refreshWeather]);
+
+  const conditions = toWeatherConditions(weather, forecast);
   const assemblyResults = checkAllAssemblies(conditions);
   const aiInsights = generateAIInsights(conditions, assemblyResults, dailyForecasts);
   const scheduleRecs = generateScheduleRecommendations(dailyForecasts);
   const riskAssessments = generateRiskAssessments(dailyForecasts);
   const executiveSummary = generateExecutiveSummary(conditions, assemblyResults, dailyForecasts);
+  const workLog = B140_WORK_LOG;
+  const workLogStats = useMemo(() => getWorkLogStats(workLog), [workLog]);
 
   const systemCompliant = assemblyResults.every(r => r.compliant);
   const failingAssemblies = assemblyResults.filter(r => !r.compliant);
@@ -217,9 +218,9 @@ export default function MainDashboard({
     setExpandedAssemblies(next);
   };
 
-  // Calculate project stats
-  const openItems = DEMO_ITEMS.filter(i => i.status === "open" || i.status === "in_progress").length;
-  const criticalItems = DEMO_ITEMS.filter(i => i.priority === "critical" || i.priority === "high").length;
+  // Project hub summary counts
+  const openItems = projectManifest.rfis.length + projectManifest.submittals.length;
+  const criticalItems = projectManifest.rfis.length;
 
   return (
     <div className="space-y-6">
@@ -282,6 +283,13 @@ export default function MainDashboard({
         </div>
       </motion.div>
 
+      {weatherError && (
+        <div className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+          <AlertTriangle className="w-4 h-4 text-rose-300" />
+          <span>Weather API update failed. Displaying last known conditions.</span>
+        </div>
+      )}
+
       {/* PREMIUM TAB NAVIGATION */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -296,13 +304,13 @@ export default function MainDashboard({
           AI Intelligence
         </TabButton>
         <TabButton active={activeTab === "calendar"} onClick={() => setActiveTab("calendar")} icon={<CalendarDays className="w-4 h-4" />}>
-          Project Calendar
+          Work Log + Forecast
         </TabButton>
-        <TabButton active={activeTab === "collaboration"} onClick={() => setActiveTab("collaboration")} icon={<Users className="w-4 h-4" />} badge={openItems}>
-          Collaboration
+        <TabButton active={activeTab === "hub"} onClick={() => setActiveTab("hub")} icon={<FolderOpen className="w-4 h-4" />} badge={openItems}>
+          Project Hub
         </TabButton>
-        <TabButton active={activeTab === "documents"} onClick={() => setActiveTab("documents")} icon={<FolderOpen className="w-4 h-4" />}>
-          Documents
+        <TabButton active={activeTab === "winter"} onClick={() => setActiveTab("winter")} icon={<Snowflake className="w-4 h-4" />}>
+          Winter Work Plan
         </TabButton>
       </motion.div>
 
@@ -310,8 +318,8 @@ export default function MainDashboard({
       {activeTab === "dashboard" && (
         <DashboardView
           conditions={conditions}
-          weather={initialWeather}
-          hourlyForecast={initialForecast}
+          weather={weather}
+          hourlyForecast={forecast}
           assemblyResults={assemblyResults}
           systemCompliant={systemCompliant}
           failingAssemblies={failingAssemblies}
@@ -323,6 +331,9 @@ export default function MainDashboard({
           topInsights={aiInsights.slice(0, 2)}
           openItems={openItems}
           criticalItems={criticalItems}
+          workLogStats={workLogStats}
+          lastWeatherUpdate={lastUpdated}
+          onRefresh={refreshWeather}
         />
       )}
 
@@ -339,18 +350,18 @@ export default function MainDashboard({
         <ProjectCalendarView
           dailyForecasts={dailyForecasts}
           riskAssessments={riskAssessments}
-          workHistory={WORK_HISTORY}
+          workLog={workLog}
         />
       )}
 
-      {activeTab === "collaboration" && (
-        <CollaborationView
-          items={DEMO_ITEMS}
-          activity={DEMO_ACTIVITY}
+      {activeTab === "hub" && <ProjectHub manifest={projectManifest} />}
+
+      {activeTab === "winter" && (
+        <WinterWorkPlan
+          dailyForecasts={dailyForecasts}
+          hourlyForecast={forecast}
         />
       )}
-
-      {activeTab === "documents" && <DocumentsView />}
     </div>
   );
 }
@@ -370,10 +381,11 @@ function TabButton({ active, onClick, icon, children, badge }: {
 }
 
 // ========== DASHBOARD VIEW ==========
-function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems }: {
+function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, systemCompliant, failingAssemblies, goCount, expandedAssemblies, toggleAssembly, project, executiveSummary, topInsights, openItems, criticalItems, workLogStats, lastWeatherUpdate, onRefresh }: {
   conditions: WeatherConditions; weather: WeatherData; hourlyForecast: WeatherData[]; assemblyResults: AssemblyResult[]; systemCompliant: boolean;
   failingAssemblies: AssemblyResult[]; goCount: number; expandedAssemblies: Set<string>; toggleAssembly: (id: string) => void;
   project: typeof PROJECTS[0]; executiveSummary: string; topInsights: AIInsight[]; openItems: number; criticalItems: number;
+  workLogStats: WorkLogStats; lastWeatherUpdate?: Date; onRefresh?: () => void | Promise<void>;
 }) {
   const TrendIcon = conditions.tempTrend === "rising" ? TrendingUp : conditions.tempTrend === "falling" ? TrendingDown : Minus;
   const trendColor = conditions.tempTrend === "rising" ? "text-emerald-400" : conditions.tempTrend === "falling" ? "text-rose-400" : "text-muted-foreground";
@@ -384,6 +396,8 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
       <WeatherVisualization
         current={weather}
         hourlyForecast={hourlyForecast}
+        sunrise={weather.sunrise}
+        sunset={weather.sunset}
       />
 
       {/* SYSTEM STATUS */}
@@ -509,9 +523,12 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
       <div className="grid gap-6 lg:grid-cols-2">
         <RealTimeStatus
           projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
+          lastWeatherUpdate={lastWeatherUpdate}
           assemblyGoCount={goCount}
           totalAssemblies={assemblyResults.length}
           systemCompliant={systemCompliant}
+          workLogStats={workLogStats}
+          onRefresh={onRefresh}
         />
         <CrewSafety weather={weather} />
       </div>
@@ -522,6 +539,7 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
           currentTemp={weather.temp}
           windSpeed={weather.wind_speed}
           isPrecipitating={(weather.pop || 0) > 0.3}
+          tempTrend={conditions.tempTrend}
         />
         <ProjectProgress />
       </div>
@@ -696,22 +714,27 @@ function RiskCard({ assessment, isToday }: { assessment: ReturnType<typeof gener
 }
 
 // ========== PROJECT CALENDAR VIEW ==========
-function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
+function ProjectCalendarView({ dailyForecasts, riskAssessments, workLog }: {
   dailyForecasts: DailyForecast[]; riskAssessments: ReturnType<typeof generateRiskAssessments>;
-  workHistory: Record<string, { type: string; notes?: string; sqft?: number }>;
+  workLog: WorkLogEntry[];
 }) {
-  // Calculate stats
-  const workedDays = Object.values(workHistory).filter(d => d.type === "worked").length;
-  const weatherHoldDays = Object.values(workHistory).filter(d => d.type === "weather_hold").length;
-  const totalSqft = Object.values(workHistory).filter(d => d.sqft).reduce((sum, d) => sum + (d.sqft || 0), 0);
+  const stats = useMemo(() => getWorkLogStats(workLog, new Date()), [workLog]);
+  const workLogMap = useMemo(() => buildWorkLogMap(workLog), [workLog]);
+  const months = useMemo(() => getWorkLogMonths(workLog), [workLog]);
 
-  // Generate calendar days for January 2024
-  const calendarDays = [];
-  for (let i = 1; i <= 31; i++) {
-    const date = new Date(2024, 0, i);
-    const dateKey = date.toISOString().split('T')[0];
-    calendarDays.push({ date, dateKey, data: workHistory[dateKey] });
-  }
+  const formatDate = (date?: string) => {
+    if (!date) return "—";
+    const [year, month, day] = date.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const toISODateLocal = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -722,8 +745,8 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
             <div className="flex items-center gap-3">
               <Hammer className="w-8 h-8 text-emerald-500" />
               <div>
-                <div className="text-2xl font-bold">{workedDays}</div>
-                <div className="text-sm text-muted-foreground">Days Worked</div>
+                <div className="text-2xl font-bold">{stats.totalDays}</div>
+                <div className="text-sm text-muted-foreground">Workdays Logged</div>
               </div>
             </div>
           </CardContent>
@@ -731,10 +754,10 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
         <Card className="bg-amber-500/10 border-amber-500/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <CloudRain className="w-8 h-8 text-amber-500" />
+              <Clock className="w-8 h-8 text-amber-500" />
               <div>
-                <div className="text-2xl font-bold">{weatherHoldDays}</div>
-                <div className="text-sm text-muted-foreground">Weather Holds</div>
+                <div className="text-2xl font-bold">{stats.totalLaborHours.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Total Labor Hours</div>
               </div>
             </div>
           </CardContent>
@@ -742,10 +765,10 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
         <Card className="bg-blue-500/10 border-blue-500/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <BarChart3 className="w-8 h-8 text-blue-500" />
+              <Activity className="w-8 h-8 text-blue-500" />
               <div>
-                <div className="text-2xl font-bold">{totalSqft.toLocaleString()}</div>
-                <div className="text-sm text-muted-foreground">SF Installed</div>
+                <div className="text-2xl font-bold">{stats.averageHoursPerDay.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">Avg Hours / Day</div>
               </div>
             </div>
           </CardContent>
@@ -753,10 +776,10 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
         <Card className="bg-purple-500/10 border-purple-500/30">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Target className="w-8 h-8 text-purple-500" />
+              <CalendarDays className="w-8 h-8 text-purple-500" />
               <div>
-                <div className="text-2xl font-bold">{Math.round((workedDays / (workedDays + weatherHoldDays)) * 100)}%</div>
-                <div className="text-sm text-muted-foreground">Work Rate</div>
+                <div className="text-2xl font-bold">{formatDate(stats.lastWorkedDate)}</div>
+                <div className="text-sm text-muted-foreground">Last Worked</div>
               </div>
             </div>
           </CardContent>
@@ -767,53 +790,60 @@ function ProjectCalendarView({ dailyForecasts, riskAssessments, workHistory }: {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><CalendarDays className="w-5 h-5 text-primary" />January 2024 - Project Calendar</span>
+            <span className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              Work Log Calendar ({formatDate(stats.firstWorkedDate)} – {formatDate(stats.lastWorkedDate)})
+            </span>
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-emerald-500" /> Worked</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-500" /> Weather Hold</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-slate-500" /> Weekend</span>
-              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-blue-500" /> Scheduled</span>
+              <span className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-slate-500" /> No Log</span>
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-2">{day}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-2">
-            {/* Empty cells for January 2024 starting on Monday */}
-            <div className="aspect-square" />
-            {calendarDays.map(({ date, dateKey, data }) => {
-              const dayNum = date.getDate();
-              const isToday = dayNum === 22;
-              const typeColors: Record<string, string> = {
-                worked: "bg-emerald-500/20 border-emerald-500/50 text-emerald-400",
-                weather_hold: "bg-amber-500/20 border-amber-500/50 text-amber-400",
-                weekend: "bg-slate-500/20 border-slate-500/30 text-slate-400",
-                scheduled: "bg-blue-500/20 border-blue-500/50 text-blue-400"
-              };
-              const bgClass = data ? typeColors[data.type] || "bg-muted/30" : "bg-muted/10";
+          {months.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No work log entries available.</div>
+          ) : (
+            <div className="space-y-6">
+              {months.map(monthKey => {
+                const [year, month] = monthKey.split("-").map(Number);
+                const firstDay = new Date(year, month - 1, 1);
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const startOffset = firstDay.getDay();
+                const label = firstDay.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+                const days = Array.from({ length: daysInMonth }, (_, i) => {
+                  const date = new Date(year, month - 1, i + 1);
+                  const key = toISODateLocal(date);
+                  return { date, key, entry: workLogMap.get(key) };
+                });
 
-              return (
-                <div key={dateKey} className={`aspect-square p-1 rounded-lg border ${bgClass} ${isToday ? 'ring-2 ring-primary' : ''} hover:bg-white/10 transition-colors cursor-pointer group relative`}>
-                  <div className="text-xs font-bold">{dayNum}</div>
-                  {data?.sqft && <div className="text-[10px] text-muted-foreground">{data.sqft}sf</div>}
-                  {data?.type === "weather_hold" && <CloudRain className="w-3 h-3 absolute bottom-1 right-1 text-amber-400" />}
-                  {data?.type === "worked" && <Sun className="w-3 h-3 absolute bottom-1 right-1 text-emerald-400" />}
-                  {/* Tooltip */}
-                  {data?.notes && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                      <div className="bg-popover border border-border rounded-md p-2 text-xs shadow-lg whitespace-nowrap">
-                        {data.notes}
-                      </div>
+                return (
+                  <div key={monthKey} className="space-y-3">
+                    <div className="text-sm font-semibold text-muted-foreground">{label}</div>
+                    <div className="grid grid-cols-7 gap-2 text-xs">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+                        <div key={day} className="text-center font-semibold text-muted-foreground py-1">{day}</div>
+                      ))}
+                      {Array.from({ length: startOffset }).map((_, i) => (
+                        <div key={`empty-${monthKey}-${i}`} className="aspect-square" />
+                      ))}
+                      {days.map(({ date, key, entry }) => {
+                        const bgClass = entry ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300" : "bg-muted/10 border-border/40 text-muted-foreground";
+                        return (
+                          <div key={key} className={`aspect-square p-1 rounded-lg border ${bgClass} hover:bg-white/10 transition-colors relative`}>
+                            <div className="text-[10px] font-semibold">{date.getDate()}</div>
+                            {entry && (
+                              <div className="text-[10px] text-emerald-200 mt-1">{entry.laborHours.toFixed(1)}h</div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -856,256 +886,5 @@ function ForecastCard({ day, goCount, total, isToday, risk }: {
         <div className="text-xs text-muted-foreground">GO</div>
       </CardContent>
     </Card>
-  );
-}
-
-// ========== COLLABORATION VIEW ==========
-function CollaborationView({ items, activity }: { items: ProjectItem[]; activity: ActivityEntry[]; }) {
-  const [filter, setFilter] = useState<string>("all");
-
-  const filteredItems = filter === "all" ? items : items.filter(i => i.type === filter || i.status === filter);
-  const openCount = items.filter(i => i.status === "open").length;
-  const inProgressCount = items.filter(i => i.status === "in_progress").length;
-  const pendingCount = items.filter(i => i.status === "pending_review").length;
-
-  return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-            <Users className="w-8 h-8 text-blue-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">Project Collaboration</h2>
-            <p className="text-sm text-muted-foreground">Issues, RFIs, submittals and team coordination</p>
-          </div>
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-          <Plus className="w-4 h-4" /> New Item
-        </button>
-      </div>
-
-      {/* QUICK STATS */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setFilter("open")}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/20"><AlertCircle className="w-5 h-5 text-blue-500" /></div>
-            <div><div className="text-2xl font-bold">{openCount}</div><div className="text-sm text-muted-foreground">Open</div></div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setFilter("in_progress")}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20"><Clock className="w-5 h-5 text-amber-500" /></div>
-            <div><div className="text-2xl font-bold">{inProgressCount}</div><div className="text-sm text-muted-foreground">In Progress</div></div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setFilter("pending_review")}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/20"><HelpCircle className="w-5 h-5 text-purple-500" /></div>
-            <div><div className="text-2xl font-bold">{pendingCount}</div><div className="text-sm text-muted-foreground">Pending Review</div></div>
-          </CardContent>
-        </Card>
-        <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => setFilter("all")}>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/20"><ClipboardList className="w-5 h-5 text-emerald-500" /></div>
-            <div><div className="text-2xl font-bold">{items.length}</div><div className="text-sm text-muted-foreground">Total Items</div></div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ITEMS LIST */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Active Items</h3>
-            <div className="flex items-center gap-2">
-              <select value={filter} onChange={(e) => setFilter(e.target.value)} className="bg-muted border-border rounded-md px-3 py-1.5 text-sm">
-                <option value="all">All Types</option>
-                <option value="issue">Issues</option>
-                <option value="rfi">RFIs</option>
-                <option value="submittal">Submittals</option>
-                <option value="delay">Delays</option>
-                <option value="safety">Safety</option>
-              </select>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {filteredItems.map(item => <ProjectItemCard key={item.id} item={item} />)}
-          </div>
-        </div>
-
-        {/* ACTIVITY FEED */}
-        <div>
-          <h3 className="font-semibold mb-4">Recent Activity</h3>
-          <Card className="bg-muted/20">
-            <CardContent className="p-4 space-y-4">
-              {activity.slice(0, 8).map(entry => (
-                <div key={entry.id} className="flex items-start gap-3 pb-3 border-b border-border/50 last:border-0">
-                  <ActivityIcon type={entry.type} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{entry.title}</div>
-                    <div className="text-xs text-muted-foreground">{entry.description}</div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {entry.actor} • {formatTimeAgo(entry.timestamp)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProjectItemCard({ item }: { item: ProjectItem }) {
-  const typeConfig = ITEM_TYPE_CONFIG[item.type];
-  const statusConfig = STATUS_CONFIG[item.status];
-  const priorityConfig = PRIORITY_CONFIG[item.priority];
-
-  return (
-    <Card className="hover:bg-muted/30 transition-colors cursor-pointer">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge className={`${typeConfig.color} text-white text-xs`}>{typeConfig.label}</Badge>
-              <span className="text-xs text-muted-foreground font-mono">{item.id}</span>
-              <Badge className={`${priorityConfig.color} text-xs`}>{priorityConfig.label}</Badge>
-            </div>
-            <h4 className="font-semibold mb-1">{item.title}</h4>
-            <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {item.assignedTo.map(s => STAKEHOLDER_CONFIG[s].label).join(", ")}
-              </span>
-              {item.dueDate && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Due {item.dueDate.toLocaleDateString()}
-                </span>
-              )}
-              {item.comments.length > 0 && (
-                <span className="flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3" />
-                  {item.comments.length}
-                </span>
-              )}
-            </div>
-          </div>
-          <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ActivityIcon({ type }: { type: ActivityEntry["type"] }) {
-  const icons: Record<ActivityEntry["type"], { icon: typeof Activity; color: string }> = {
-    status_change: { icon: Activity, color: "text-blue-400" },
-    comment: { icon: MessageSquare, color: "text-purple-400" },
-    item_created: { icon: Plus, color: "text-emerald-400" },
-    weather_alert: { icon: CloudRain, color: "text-amber-400" },
-    document_uploaded: { icon: FileText, color: "text-cyan-400" },
-    milestone: { icon: Target, color: "text-green-400" }
-  };
-  const config = icons[type];
-  const Icon = config.icon;
-  return <div className={`p-1.5 rounded-full bg-muted ${config.color}`}><Icon className="w-3 h-3" /></div>;
-}
-
-function formatTimeAgo(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-// ========== DOCUMENTS VIEW ==========
-function DocumentsView() {
-  const projectDocs = [
-    { category: "Specifications & Data Sheets", icon: FileText, docs: [
-      { name: "Building 140 Roofing Specification", type: "PDF", size: "2.4 MB", date: "Jan 15, 2024" },
-      { name: "Garland Green-Lock Plus TDS", type: "PDF", size: "892 KB", date: "Jan 10, 2024" },
-      { name: "R-Mer Seal Installation Manual", type: "PDF", size: "1.8 MB", date: "Jan 10, 2024" },
-    ]},
-    { category: "Submittals & Drawings", icon: FolderOpen, docs: [
-      { name: "Material Submittal Package - Approved", type: "PDF", size: "12.4 MB", date: "Jan 12, 2024" },
-      { name: "Shop Drawings - Roof Details", type: "DWG", size: "4.2 MB", date: "Jan 8, 2024" },
-    ]},
-    { category: "Safety & Compliance", icon: Shield, docs: [
-      { name: "Site-Specific Safety Plan", type: "PDF", size: "3.2 MB", date: "Jan 5, 2024" },
-      { name: "Weather Compliance Log Template", type: "XLSX", size: "124 KB", date: "Jan 1, 2024" },
-    ]},
-    { category: "Warranty & QC", icon: CheckCircle2, docs: [
-      { name: "Garland NDL Warranty Requirements", type: "PDF", size: "1.4 MB", date: "Jan 2, 2024" },
-      { name: "Temperature Compliance Tracking", type: "XLSX", size: "234 KB", date: "Jan 1, 2024" },
-    ]}
-  ];
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2"><FolderOpen className="w-5 h-5 text-primary" />Project Documents</span>
-            <Badge variant="outline" className="font-mono">Building 140</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 lg:grid-cols-2">
-            {projectDocs.map(category => (
-              <Card key={category.category} className="bg-muted/20">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <category.icon className="w-4 h-4 text-primary" />{category.category}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {category.docs.map(doc => (
-                    <a key={doc.name} href="#" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors group">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium truncate">{doc.name}</div>
-                          <div className="text-xs text-muted-foreground">{doc.type} • {doc.size} • {doc.date}</div>
-                        </div>
-                      </div>
-                      <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                    </a>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="mt-8 p-6 bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-xl border border-primary/20">
-            <h3 className="font-semibold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-primary" />Connected Platforms</h3>
-            <div className="grid gap-4 md:grid-cols-4">
-              {[
-                { name: "Google Drive", desc: "Project Folder", color: "bg-blue-500" },
-                { name: "Dropbox", desc: "Photo Uploads", color: "bg-sky-500" },
-                { name: "Procore", desc: "Project Mgmt", color: "bg-orange-500" },
-                { name: "PlanGrid", desc: "Field Drawings", color: "bg-emerald-500" },
-              ].map(platform => (
-                <a key={platform.name} href="#" className="flex items-center gap-3 p-4 bg-background rounded-lg border hover:border-primary transition-colors">
-                  <div className={`w-10 h-10 ${platform.color} rounded-lg flex items-center justify-center text-white font-bold`}>{platform.name[0]}</div>
-                  <div>
-                    <div className="font-medium text-sm">{platform.name}</div>
-                    <div className="text-xs text-muted-foreground">{platform.desc}</div>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
   );
 }

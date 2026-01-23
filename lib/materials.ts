@@ -117,7 +117,13 @@ export const MATERIALS: Material[] = [
   }
 ];
 
-export function checkCompliance(materialId: string, currentTemp: number, windSpeed: number, isPrecipitating: boolean): { compliant: boolean; reasons: string[] } {
+export function checkCompliance(
+  materialId: string, 
+  currentTemp: number, 
+  windSpeed: number, 
+  isPrecipitating: boolean,
+  tempTrend?: "rising" | "falling" | "stable"
+): { compliant: boolean; reasons: string[] } {
   const material = MATERIALS.find(m => m.id === materialId);
   if (!material) return { compliant: false, reasons: ["Material not found"] };
 
@@ -132,6 +138,11 @@ export function checkCompliance(materialId: string, currentTemp: number, windSpe
   if (material.constraints.maxTemp !== undefined && currentTemp > material.constraints.maxTemp) {
     compliant = false;
     reasons.push(`Temp ${Math.round(currentTemp)}°F is above max ${material.constraints.maxTemp}°F`);
+  }
+
+  if (material.constraints.rising && tempTrend && tempTrend !== "rising") {
+    compliant = false;
+    reasons.push(`Temp must be rising (currently ${tempTrend})`);
   }
 
   if (material.constraints.maxWind !== undefined && windSpeed > material.constraints.maxWind) {

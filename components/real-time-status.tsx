@@ -23,6 +23,7 @@ import {
   Bell,
   X
 } from "lucide-react";
+import type { WorkLogStats } from "@/lib/work-log";
 
 type AlertSeverity = "info" | "warning" | "critical" | "success";
 
@@ -44,7 +45,8 @@ type RealTimeStatusProps = {
   assemblyGoCount: number;
   totalAssemblies: number;
   systemCompliant: boolean;
-  onRefresh?: () => void;
+  workLogStats?: WorkLogStats;
+  onRefresh?: () => void | Promise<void>;
 };
 
 // Calculate sunrise/sunset times (simplified algorithm for demo)
@@ -74,48 +76,13 @@ function calculateSunTimes(lat: number, date: Date) {
   return { sunrise, sunset };
 }
 
-// Calculate work day streak and weather delays
-function calculateProjectStats(workEntries: Record<string, { type: string }>) {
-  let streak = 0;
-  let daysSinceDelay = 0;
-  let foundDelay = false;
-
-  // Check last 30 days
-  const today = new Date();
-  for (let i = 0; i < 30; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(today.getDate() - i);
-    const dateKey = checkDate.toISOString().split('T')[0];
-    const entry = workEntries[dateKey];
-
-    // Skip weekends for streak
-    const dayOfWeek = checkDate.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-
-    if (!foundDelay && entry?.type === "weather_hold") {
-      foundDelay = true;
-    }
-
-    if (!foundDelay) {
-      daysSinceDelay++;
-    }
-
-    if (i === 0 || entry?.type === "worked") {
-      streak++;
-    } else if (entry?.type !== "weekend") {
-      break;
-    }
-  }
-
-  return { streak: Math.max(streak - 1, 0), daysSinceDelay };
-}
-
 export default function RealTimeStatus({
   projectLocation,
   lastWeatherUpdate,
   assemblyGoCount,
   totalAssemblies,
   systemCompliant,
+  workLogStats,
   onRefresh
 }: RealTimeStatusProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -125,26 +92,20 @@ export default function RealTimeStatus({
   const [alerts, setAlerts] = useState<StatusAlert[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Demo work history - in production this would come from the store
-  const workEntries: Record<string, { type: string }> = useMemo(() => ({
-    "2024-01-19": { type: "worked" },
-    "2024-01-18": { type: "worked" },
-    "2024-01-17": { type: "worked" },
-    "2024-01-16": { type: "weather_hold" },
-    "2024-01-15": { type: "worked" },
-  }), []);
-
   // Calculate sun times
   const { sunrise, sunset } = useMemo(
     () => calculateSunTimes(projectLocation.lat, currentTime),
     [projectLocation.lat, currentTime.toDateString()]
   );
 
-  // Calculate project stats
-  const { streak, daysSinceDelay } = useMemo(
-    () => calculateProjectStats(workEntries),
-    [workEntries]
-  );
+  const fallbackStats: WorkLogStats = {
+    totalDays: 0,
+    totalLaborHours: 0,
+    averageHoursPerDay: 0,
+    workStreak: 0,
+    daysSinceLastWork: null
+  };
+  const resolvedStats = workLogStats ?? fallbackStats;
 
   // Progress ring calculation
   const progressPercentage = (assemblyGoCount / totalAssemblies) * 100;
@@ -212,9 +173,12 @@ export default function RealTimeStatus({
   // Handle refresh
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    onRefresh?.();
-    // Simulate refresh time
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await onRefresh?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Refresh failed";
+      addAlert({ message, severity: "warning", autoDismiss: 6 });
+    }
     setIsRefreshing(false);
     setNextRefreshCountdown(300);
   };
@@ -392,15 +356,17 @@ export default function RealTimeStatus({
 
             {/* Quick Stats */}
             <div className="flex items-center gap-4">
-              {/* Days Since Weather Delay */}
+              {/* Days Since Last Work */}
               <div className="text-center">
-                <div className="text-2xl font-bold font-mono text-emerald-400">{daysSinceDelay}</div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Days No Delay</div>
+                <div className="text-2xl font-bold font-mono text-emerald-400">
+                  {resolvedStats.daysSinceLastWork ?? "—"}
+                </div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Days Since Work</div>
               </div>
 
               {/* Work Streak */}
               <div className="text-center">
-                <div className="text-2xl font-bold font-mono text-blue-400">{streak}</div>
+                <div className="text-2xl font-bold font-mono text-blue-400">{resolvedStats.workStreak}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Work Streak</div>
               </div>
 

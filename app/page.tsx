@@ -1,5 +1,6 @@
 import { getCurrentWeatherServer, getForecastServer, groupForecastByDayServer } from "@/lib/weather-server";
 import { PROJECTS } from "@/lib/config";
+import { getProjectManifest } from "@/lib/project-manifest";
 import MainDashboard from "@/components/main-dashboard";
 
 export const revalidate = 300; // Revalidate every 5 minutes
@@ -15,6 +16,7 @@ export default async function Home() {
 
   // Group forecast by day for calendar view
   const dailyForecasts = groupForecastByDayServer(forecast);
+  const projectManifest = getProjectManifest();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -24,6 +26,7 @@ export default async function Home() {
           initialForecast={forecast}
           dailyForecasts={dailyForecasts}
           defaultProject={defaultProject}
+          projectManifest={projectManifest}
         />
       </div>
     </main>

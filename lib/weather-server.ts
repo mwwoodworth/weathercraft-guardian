@@ -35,6 +35,8 @@ export type WeatherData = {
   icon: string;
   pop: number;
   dt: number;
+  sunrise?: number;
+  sunset?: number;
 };
 
 export type DailyForecast = {
@@ -78,7 +80,9 @@ export async function getCurrentWeatherServer(lat: number, lon: number): Promise
     description: data.weather[0].description,
     icon: data.weather[0].icon,
     pop: 0,
-    dt: data.dt
+    dt: data.dt,
+    sunrise: data.sys?.sunrise,
+    sunset: data.sys?.sunset
   };
 }
 
