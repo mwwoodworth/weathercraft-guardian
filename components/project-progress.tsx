@@ -22,7 +22,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 
-// Types
+// Types - kept for future production data integration
 export type PhaseStatus = "complete" | "in_progress" | "not_started";
 export type AreaStatus = "complete" | "in_progress" | "not_started";
 
@@ -59,6 +59,7 @@ export interface Milestone {
   isWeatherDelay?: boolean;
 }
 
+// Kept for future use when production data is integrated
 export interface ProductionStats {
   avgSFPerDay: number;
   bestDaySF: number;
@@ -68,91 +69,49 @@ export interface ProductionStats {
   weatherDelayDays: number;
 }
 
-// Demo project data - In production this would come from the store/API
-const DEMO_PROJECT_DATA = {
-  totalSF: 45000,
-  completedSF: 18750,
-  startDate: new Date(2024, 0, 8),
-  originalEndDate: new Date(2024, 2, 15),
+// Real project data derived from B140ACCT.csv work log
+// NOTE: Square footage tracking data is not available from the accounting system
+// Labor hours and days worked are REAL - SF completion tracking is PENDING integration
+import { B140_WORK_LOG, getWorkLogStats } from "@/lib/work-log";
 
-  phases: [
-    { id: "deck_prep", name: "Deck Preparation", shortName: "Deck", targetSF: 45000, completedSF: 45000, status: "complete" as PhaseStatus, color: "bg-slate-500", icon: HardHat },
-    { id: "base_sheet", name: "Base Sheet Installation", shortName: "Base", targetSF: 45000, completedSF: 28500, status: "in_progress" as PhaseStatus, color: "bg-blue-500", icon: Layers },
-    { id: "cap_sheet", name: "Cap Sheet Installation", shortName: "Cap", targetSF: 45000, completedSF: 12000, status: "in_progress" as PhaseStatus, color: "bg-emerald-500", icon: Layers },
-    { id: "flashings", name: "Flashings & Penetrations", shortName: "Flash", targetSF: 8500, completedSF: 3200, status: "in_progress" as PhaseStatus, color: "bg-amber-500", icon: Zap },
-    { id: "coatings", name: "Protective Coatings", shortName: "Coat", targetSF: 45000, completedSF: 0, status: "not_started" as PhaseStatus, color: "bg-purple-500", icon: Flame },
-    { id: "metal_panels", name: "Metal Edge Panels", shortName: "Metal", targetSF: 4200, completedSF: 0, status: "not_started" as PhaseStatus, color: "bg-cyan-500", icon: Target },
-  ] as ProjectPhase[],
+// Get real stats from actual work log data
+const workLogStats = getWorkLogStats(B140_WORK_LOG);
 
-  areas: [
-    {
-      id: "area_a",
-      name: "Area A - North Wing",
-      totalSF: 15000,
-      completedSF: 12750,
-      status: "in_progress" as AreaStatus,
-      phases: [
-        { phaseId: "deck_prep", status: "complete" as PhaseStatus, completedSF: 15000, targetSF: 15000 },
-        { phaseId: "base_sheet", status: "complete" as PhaseStatus, completedSF: 15000, targetSF: 15000 },
-        { phaseId: "cap_sheet", status: "in_progress" as PhaseStatus, completedSF: 9000, targetSF: 15000 },
-        { phaseId: "flashings", status: "in_progress" as PhaseStatus, completedSF: 1800, targetSF: 2800 },
-        { phaseId: "coatings", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 15000 },
-        { phaseId: "metal_panels", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 1400 },
-      ]
-    },
-    {
-      id: "area_b",
-      name: "Area B - Central",
-      totalSF: 18000,
-      completedSF: 6000,
-      status: "in_progress" as AreaStatus,
-      phases: [
-        { phaseId: "deck_prep", status: "complete" as PhaseStatus, completedSF: 18000, targetSF: 18000 },
-        { phaseId: "base_sheet", status: "in_progress" as PhaseStatus, completedSF: 13500, targetSF: 18000 },
-        { phaseId: "cap_sheet", status: "in_progress" as PhaseStatus, completedSF: 3000, targetSF: 18000 },
-        { phaseId: "flashings", status: "in_progress" as PhaseStatus, completedSF: 1400, targetSF: 3400 },
-        { phaseId: "coatings", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 18000 },
-        { phaseId: "metal_panels", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 1700 },
-      ]
-    },
-    {
-      id: "area_c",
-      name: "Area C - South Wing",
-      totalSF: 12000,
-      completedSF: 0,
-      status: "not_started" as AreaStatus,
-      phases: [
-        { phaseId: "deck_prep", status: "complete" as PhaseStatus, completedSF: 12000, targetSF: 12000 },
-        { phaseId: "base_sheet", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 12000 },
-        { phaseId: "cap_sheet", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 12000 },
-        { phaseId: "flashings", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 2300 },
-        { phaseId: "coatings", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 12000 },
-        { phaseId: "metal_panels", status: "not_started" as PhaseStatus, completedSF: 0, targetSF: 1100 },
-      ]
-    }
-  ] as ProjectArea[],
+// Project info - REAL data from work log, SF tracking PENDING
+const B140_PROJECT_DATA = {
+  // SF data pending - we track labor hours, not SF, in the accounting system
+  // These would come from daily production reports (not yet integrated)
+  totalSF: null as number | null, // PENDING: Production data integration
+  completedSF: null as number | null, // PENDING: Production data integration
+  startDate: new Date(2025, 3, 4), // April 4, 2025 - First work log entry
+  // Contract end date removed per user request - has been extended
 
+  // Phase tracking - PENDING production data integration
+  // Current system tracks labor hours, not SF by phase
+  phases: [] as ProjectPhase[],
+  areas: [] as ProjectArea[],
+
+  // Milestones - only actual events from work log, no projected dates
   milestones: [
-    { id: "m1", name: "Project Kickoff", date: new Date(2024, 0, 8), status: "completed" as const },
-    { id: "m2", name: "Deck Prep Complete", date: new Date(2024, 0, 12), status: "completed" as const },
-    { id: "m3", name: "Area A Base Sheet", date: new Date(2024, 0, 19), status: "completed" as const },
-    { id: "m4", name: "Weather Hold #1", date: new Date(2024, 0, 15), status: "completed" as const, isWeatherDelay: true },
-    { id: "m5", name: "Weather Hold #2", date: new Date(2024, 0, 16), status: "completed" as const, isWeatherDelay: true },
-    { id: "m6", name: "Area A Cap Sheet", date: new Date(2024, 0, 26), status: "current" as const },
-    { id: "m7", name: "Area B Base Sheet", date: new Date(2024, 1, 2), status: "upcoming" as const },
-    { id: "m8", name: "Area B Cap Sheet", date: new Date(2024, 1, 16), status: "upcoming" as const },
-    { id: "m9", name: "Area C Complete", date: new Date(2024, 2, 1), status: "upcoming" as const },
-    { id: "m10", name: "Final Inspection", date: new Date(2024, 2, 15), status: "upcoming" as const },
+    { id: "m1", name: "Mobilization", date: new Date(2025, 3, 4), status: "completed" as const },
+    { id: "m2", name: "Material Delivery", date: new Date(2025, 7, 19), status: "completed" as const },
+    { id: "m3", name: "Production Start", date: new Date(2025, 8, 19), status: "completed" as const },
   ] as Milestone[],
 
+  // Stats from REAL work log data
   stats: {
-    avgSFPerDay: 1050,
-    bestDaySF: 1450,
-    bestDayDate: new Date(2024, 0, 18),
-    projectedCompletion: new Date(2024, 2, 22),
-    totalDaysWorked: 9,
-    weatherDelayDays: 4
-  } as ProductionStats
+    avgSFPerDay: null as number | null, // PENDING: Need SF tracking
+    bestDaySF: null as number | null, // PENDING: Need SF tracking
+    bestDayDate: null as Date | null, // PENDING: Need SF tracking
+    projectedCompletion: null as Date | null, // PENDING: Schedule integration
+    totalDaysWorked: workLogStats.totalDays,
+    weatherDelayDays: null as number | null, // PENDING: Weather delay tracking
+    // REAL labor data from accounting
+    totalLaborHours: workLogStats.totalLaborHours,
+    avgHoursPerDay: workLogStats.averageHoursPerDay,
+    firstWorkedDate: workLogStats.firstWorkedDate,
+    lastWorkedDate: workLogStats.lastWorkedDate,
+  }
 };
 
 // Animated Progress Ring Component
@@ -668,9 +627,78 @@ function ProductionStatsGrid({ stats }: { stats: ProductionStats }) {
   );
 }
 
+// Real Labor Stats Cards - shows actual data from work log
+function RealLaborStatsGrid({ stats }: { stats: typeof B140_PROJECT_DATA.stats }) {
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "—";
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  return (
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/20">
+              <Calendar className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold font-mono">{stats.totalDaysWorked}</div>
+              <div className="text-xs text-muted-foreground">Days Worked</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/20">
+              <Clock className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold font-mono">{stats.totalLaborHours?.toLocaleString() || "—"}</div>
+              <div className="text-xs text-muted-foreground">Total Labor Hours</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/20">
+              <TrendingUp className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold font-mono">{stats.avgHoursPerDay?.toLocaleString() || "—"}</div>
+              <div className="text-xs text-muted-foreground">Avg Hours/Day</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/20">
+              <HardHat className="w-5 h-5 text-purple-500" />
+            </div>
+            <div>
+              <div className="text-lg font-bold font-mono">{formatDate(stats.lastWorkedDate)}</div>
+              <div className="text-xs text-muted-foreground">Last Worked</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // Main Project Progress Component
 export default function ProjectProgress() {
-  const [selectedArea, setSelectedArea] = useState<ProjectArea | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -692,8 +720,7 @@ export default function ProjectProgress() {
     return () => observer.disconnect();
   }, []);
 
-  const projectData = DEMO_PROJECT_DATA;
-  const overallPercentage = (projectData.completedSF / projectData.totalSF) * 100;
+  const projectData = B140_PROJECT_DATA;
 
   return (
     <div ref={containerRef} className="space-y-6">
@@ -705,169 +732,108 @@ export default function ProjectProgress() {
         <div>
           <h2 className="text-xl font-bold">Project Progress</h2>
           <p className="text-sm text-muted-foreground">
-            Building 140 Roof Replacement - Real-time tracking
+            PSFB Building 140 Roof Replacement - Job #250001
           </p>
         </div>
       </div>
 
-      {/* Timeline - Full Width at Top */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Project Timeline
-            </span>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                Completed
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Current
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <CloudRain className="w-3 h-3 text-amber-400" />
-                Weather Delay
-              </span>
+      {/* Data Validation Notice */}
+      <Card className="border-blue-500/30 bg-blue-500/5">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-blue-400">Production Data Integration In Progress</div>
+              <p className="text-sm text-muted-foreground mt-1">
+                <strong>Labor hours and days worked are REAL</strong> (from B140ACCT accounting data).
+                Square footage completion tracking requires daily production report integration - coming soon.
+                Phase and area progress visualizations will be activated once production data is available.
+              </p>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-16">
-          <ProjectTimeline milestones={projectData.milestones} />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Overall Progress + Stats */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Progress Ring */}
-        <Card className="lg:col-span-1 bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+      {/* Timeline - Actual milestones only */}
+      {projectData.milestones.length > 0 && (
+        <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Overall Completion
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                Project Timeline (Actual Events)
+              </span>
+              <div className="flex items-center gap-4 text-xs">
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Completed
+                </span>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-6">
-            <ProgressRing
-              percentage={overallPercentage}
-              completedSF={projectData.completedSF}
-              totalSF={projectData.totalSF}
-              animate={isVisible}
-            />
-            <div className="mt-4 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{projectData.phases.filter(p => p.status === "complete").length} Phases Done</span>
-              </div>
-              <div className="flex items-center gap-1 text-amber-400">
-                <Clock className="w-4 h-4" />
-                <span>{projectData.phases.filter(p => p.status === "in_progress").length} In Progress</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Production Stats */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Production Metrics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProductionStatsGrid stats={projectData.stats} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Phase Progress Bars */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-primary" />
-              Phase Progress
-            </span>
-            <Badge variant="outline" className="font-mono">
-              {projectData.phases.filter(p => p.status === "complete").length}/{projectData.phases.length} Complete
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {projectData.phases.map((phase, index) => (
-            <PhaseProgressBar
-              key={phase.id}
-              phase={phase}
-              index={index}
-              isVisible={isVisible}
-            />
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Area Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" />
-              Area Breakdown
-            </span>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                Complete
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                In Progress
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-slate-600" />
-                Not Started
-              </span>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AreaGrid
-            areas={projectData.areas}
-            phases={projectData.phases}
-            onAreaClick={setSelectedArea}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Schedule Alert */}
-      {projectData.stats.projectedCompletion > projectData.originalEndDate && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-amber-400">Schedule Impact Detected</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Due to {projectData.stats.weatherDelayDays} weather delay days, the projected completion date
-                  ({projectData.stats.projectedCompletion.toLocaleDateString()}) is {Math.ceil((projectData.stats.projectedCompletion.getTime() - projectData.originalEndDate.getTime()) / (1000 * 60 * 60 * 24))} days
-                  beyond the original target ({projectData.originalEndDate.toLocaleDateString()}).
-                </p>
-              </div>
-            </div>
+          <CardContent className="pb-16">
+            <ProjectTimeline milestones={projectData.milestones} />
           </CardContent>
         </Card>
       )}
 
-      {/* Area Detail Modal */}
-      <AreaDetailModal
-        area={selectedArea}
-        phases={projectData.phases}
-        onClose={() => setSelectedArea(null)}
-      />
+      {/* Real Labor Stats */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            Labor Metrics (Real Data)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RealLaborStatsGrid stats={projectData.stats} />
+        </CardContent>
+      </Card>
+
+      {/* Project Summary */}
+      <Card className="bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            Project Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Project</div>
+                <div className="font-semibold">PSFB Building 140 Roof Replacement</div>
+                <div className="text-sm text-muted-foreground">Peterson Space Force Base, Colorado Springs</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Job Number</div>
+                <div className="font-mono font-semibold">250001</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Work Started</div>
+                <div className="font-semibold">{projectData.startDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Scope</div>
+                <div className="font-semibold">Modified Bitumen + Standing Seam Metal</div>
+                <div className="text-sm text-muted-foreground">Full roof system replacement</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</div>
+                <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  Active - In Progress
+                </Badge>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Primary Material Supplier</div>
+                <div className="font-semibold">Garland Company</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

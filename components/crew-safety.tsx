@@ -231,13 +231,18 @@ function getBreakSchedule(temp: number): { interval: number; duration: number; m
   return { interval: 120, duration: 10, message: "Standard: 10-min breaks every 2 hours" };
 }
 
-// Demo data
-const DEMO_CREW: CrewMember[] = [
-  { id: "c1", name: "Mike Rodriguez", role: "Foreman", checkedIn: true, hoursWorked: 4.5, lastBreak: new Date(Date.now() - 45 * 60000), buddyId: "c2" },
-  { id: "c2", name: "James Wilson", role: "Journeyman", checkedIn: true, hoursWorked: 4.5, lastBreak: new Date(Date.now() - 45 * 60000), buddyId: "c1" },
-  { id: "c3", name: "Carlos Mendez", role: "Journeyman", checkedIn: true, hoursWorked: 4.0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c4" },
-  { id: "c4", name: "David Chen", role: "Apprentice", checkedIn: true, hoursWorked: 4.0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c3" },
-  { id: "c5", name: "Ryan Thompson", role: "Laborer", checkedIn: false, hoursWorked: 0, lastBreak: null, buddyId: null },
+// Real crew data from B140 project - FULL NAMES from B140ACCT.csv payroll records
+// These are the actual crew members who have worked on the Building 140 job
+const B140_CREW: CrewMember[] = [
+  { id: "c11", name: "Dustin Cartmell", role: "Foreman", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 45 * 60000), buddyId: "c544" },
+  { id: "c544", name: "Jesse Vialpando", role: "Lead Laborer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 45 * 60000), buddyId: "c11" },
+  { id: "c197", name: "Rickie Lopez Jr", role: "Journeyman Roofer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c496" },
+  { id: "c496", name: "Tevin Morris", role: "Journeyman Roofer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c197" },
+  { id: "c90", name: "Steven Miller", role: "Sheet Metal", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 60 * 60000), buddyId: "c573" },
+  { id: "c573", name: "Daniel Wright", role: "Laborer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 60 * 60000), buddyId: "c90" },
+  { id: "c580", name: "Josue Giron", role: "Laborer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c590" },
+  { id: "c590", name: "Oscar Gallardo Rios", role: "Laborer", checkedIn: true, hoursWorked: 0, lastBreak: new Date(Date.now() - 30 * 60000), buddyId: "c580" },
+  { id: "c536", name: "Robert Graham", role: "Journeyman Roofer", checkedIn: false, hoursWorked: 0, lastBreak: null, buddyId: null },
 ];
 
 const INITIAL_SAFETY_CHECKLIST: SafetyCheckItem[] = [
@@ -255,16 +260,16 @@ const INITIAL_SAFETY_CHECKLIST: SafetyCheckItem[] = [
   { id: "sc12", category: "Cold Weather", item: "Hot beverages/soup available", checked: false, required: false, weatherDependent: true },
 ];
 
+// Emergency contacts - role-based (contact Weathercraft dispatch for specific personnel)
 const EMERGENCY_CONTACTS: EmergencyContact[] = [
   { id: "ec1", name: "911 Emergency", role: "Police/Fire/EMS", phone: "911", primary: true },
-  { id: "ec2", name: "Site Supervisor", role: "John Martinez", phone: "(719) 555-0123", primary: true },
-  { id: "ec3", name: "Company Safety Officer", role: "Sarah Davis", phone: "(719) 555-0456", primary: true },
-  { id: "ec4", name: "Project Manager", role: "Robert Kim", phone: "(719) 555-0789", primary: false },
-  { id: "ec5", name: "Nearest Hospital", role: "Memorial Hospital Central", phone: "(719) 365-5000", primary: false },
+  { id: "ec2", name: "Weathercraft Dispatch", role: "24/7 Emergency Line", phone: "(719) 632-1886", primary: true },
+  { id: "ec3", name: "Peterson SFB Security", role: "Base Emergency", phone: "(719) 556-4000", primary: true },
+  { id: "ec4", name: "UCHealth Memorial", role: "Nearest Trauma Center", phone: "(719) 365-5000", primary: false },
 ];
 
 export default function CrewSafety({ weather }: CrewSafetyProps) {
-  const [crew] = useState<CrewMember[]>(DEMO_CREW);
+  const [crew] = useState<CrewMember[]>(B140_CREW);
   const [checklist, setChecklist] = useState<SafetyCheckItem[]>(INITIAL_SAFETY_CHECKLIST);
   const [breakTimer, setBreakTimer] = useState<number>(0);
   const [timerRunning, setTimerRunning] = useState(false);
