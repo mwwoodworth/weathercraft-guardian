@@ -590,7 +590,7 @@ function ProductionStatsGrid({ stats }: { stats: ProductionStats }) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
       <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/30">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
@@ -710,6 +710,36 @@ export default function ProjectProgress() {
         </div>
       </div>
 
+      {/* Timeline - Full Width at Top */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              Project Timeline
+            </span>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                Completed
+              </span>
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                Current
+              </span>
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <CloudRain className="w-3 h-3 text-amber-400" />
+                Weather Delay
+              </span>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-16">
+          <ProjectTimeline milestones={projectData.milestones} />
+        </CardContent>
+      </Card>
+
       {/* Overall Progress + Stats */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Progress Ring */}
@@ -810,36 +840,6 @@ export default function ProjectProgress() {
             phases={projectData.phases}
             onAreaClick={setSelectedArea}
           />
-        </CardContent>
-      </Card>
-
-      {/* Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Project Timeline
-            </span>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                Completed
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                Current
-              </span>
-              <span className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <CloudRain className="w-3 h-3 text-amber-400" />
-                Weather Delay
-              </span>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-16">
-          <ProjectTimeline milestones={projectData.milestones} />
         </CardContent>
       </Card>
 

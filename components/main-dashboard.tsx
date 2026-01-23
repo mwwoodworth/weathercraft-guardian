@@ -519,32 +519,32 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
 
         {activeSubTab === "operations" && (
           <motion.div key="operations" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <RealTimeStatus
-                projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
-                lastWeatherUpdate={lastWeatherUpdate}
-                assemblyGoCount={goCount}
-                totalAssemblies={assemblyResults.length}
-                systemCompliant={systemCompliant}
-                workLogStats={workLogStats}
-                onRefresh={onRefresh}
-              />
-              <CrewSafety weather={weather} />
-            </div>
+            {/* Real-time status - full width at top */}
+            <RealTimeStatus
+              projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
+              lastWeatherUpdate={lastWeatherUpdate}
+              assemblyGoCount={goCount}
+              totalAssemblies={assemblyResults.length}
+              systemCompliant={systemCompliant}
+              workLogStats={workLogStats}
+              onRefresh={onRefresh}
+            />
+            {/* Crew Safety - full width below */}
+            <CrewSafety weather={weather} />
           </motion.div>
         )}
 
         {activeSubTab === "progress" && (
           <motion.div key="progress" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }} className="space-y-4">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <MaterialTracker
-                currentTemp={weather.temp}
-                windSpeed={weather.wind_speed}
-                isPrecipitating={(weather.pop || 0) > 0.3}
-                tempTrend={conditions.tempTrend}
-              />
-              <ProjectProgress />
-            </div>
+            {/* Project Progress - full width with timeline at top */}
+            <ProjectProgress />
+            {/* Material Tracker - full width below */}
+            <MaterialTracker
+              currentTemp={weather.temp}
+              windSpeed={weather.wind_speed}
+              isPrecipitating={(weather.pop || 0) > 0.3}
+              tempTrend={conditions.tempTrend}
+            />
           </motion.div>
         )}
       </AnimatePresence>
