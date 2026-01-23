@@ -9,3 +9,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Build trigger 1769201598
