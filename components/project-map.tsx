@@ -52,16 +52,31 @@ export default function ProjectMap({
         // Dynamically import mapbox-gl only on client
         const mapboxgl = (await import("mapbox-gl")).default;
 
-        // Inject CSS if not already present
+        // Inject CSS if not already present and wait for it to load
         if (!document.getElementById("mapbox-gl-css")) {
           const link = document.createElement("link");
           link.id = "mapbox-gl-css";
           link.rel = "stylesheet";
           link.href = "https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css";
           document.head.appendChild(link);
+          // Wait for CSS to load
+          await new Promise<void>((resolve) => {
+            link.onload = () => resolve();
+            link.onerror = () => resolve(); // Continue even if CSS fails
+            setTimeout(resolve, 1000); // Fallback timeout
+          });
         }
 
         if (!isMounted || !mapContainer.current) return;
+
+        // Ensure container has dimensions
+        const container = mapContainer.current;
+        if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+          console.error("Map container has no dimensions");
+          setMapError("Container has no dimensions");
+          setIsLoading(false);
+          return;
+        }
 
         // Set access token
         mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -283,7 +298,7 @@ export default function ProjectMap({
   // Map container
   return (
     <div className="relative h-[300px] rounded-lg overflow-hidden border border-border">
-      <div ref={mapContainer} className="w-full h-full" />
+      <div ref={mapContainer} style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }} />
       {/* Debug overlay */}
       <div className="absolute bottom-12 left-3 right-3 bg-black/80 rounded px-2 py-1 text-[10px] text-green-400 font-mono">
         {debugInfo}
