@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Transpile mapbox-gl for proper SSR handling
+  transpilePackages: ["mapbox-gl"],
+
+  // Empty turbopack config to use Turbopack (Next.js 16 default)
+  turbopack: {},
 };
 
 export default nextConfig;
