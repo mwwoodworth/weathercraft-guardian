@@ -189,6 +189,9 @@ export default function ProjectMap({
     };
   }, [lat, lon, projectName, location, systemStatus, currentTemp]);
 
+  // Debug info
+  const debugInfo = `Token: ${MAPBOX_TOKEN ? "YES (" + MAPBOX_TOKEN.substring(0, 10) + "...)" : "NO"}, Loading: ${isLoading}, Error: ${mapError || "none"}`;
+
   // Static fallback when no token
   if (!MAPBOX_TOKEN) {
     const statusColor = systemStatus === "go" ? "bg-emerald-500" : systemStatus === "partial" ? "bg-amber-500" : "bg-rose-500";
@@ -265,6 +268,10 @@ export default function ProjectMap({
             <span className="text-muted-foreground text-sm">Loading satellite view...</span>
           </div>
         </div>
+        {/* Debug overlay */}
+        <div className="absolute bottom-12 left-3 right-3 bg-black/80 rounded px-2 py-1 text-[10px] text-yellow-400 font-mono">
+          {debugInfo}
+        </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <div className="text-white font-semibold text-sm">{projectName}</div>
           <div className="text-white/60 text-xs">{location}</div>
@@ -277,6 +284,10 @@ export default function ProjectMap({
   return (
     <div className="relative h-[300px] rounded-lg overflow-hidden border border-border">
       <div ref={mapContainer} className="w-full h-full" />
+      {/* Debug overlay */}
+      <div className="absolute bottom-12 left-3 right-3 bg-black/80 rounded px-2 py-1 text-[10px] text-green-400 font-mono">
+        {debugInfo}
+      </div>
       <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-sm rounded-md px-2.5 py-1.5">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${
