@@ -14,17 +14,20 @@ export const metadata = {
 export default async function WinterWorkPlanPage({
   searchParams
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // Await searchParams (required in Next.js 15+)
+  const params = await searchParams;
+
   const requestedProjectId =
-    (typeof searchParams?.project === "string" && searchParams.project) ||
-    (typeof searchParams?.projectId === "string" && searchParams.projectId) ||
+    (typeof params?.project === "string" && params.project) ||
+    (typeof params?.projectId === "string" && params.projectId) ||
     process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID ||
     process.env.WEATHERCRAFT_GUARDIAN_PROJECT_ID ||
     undefined;
 
   // Share mode: hide all navigation for GC/external sharing
-  const isShareMode = searchParams?.share === "true" || searchParams?.readonly === "true";
+  const isShareMode = params?.share === "true" || params?.readonly === "true";
 
   const project =
     PROJECTS.find((p) => p.id === requestedProjectId) ?? PROJECTS[0];
