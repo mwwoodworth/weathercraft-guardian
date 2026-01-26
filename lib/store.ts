@@ -4,6 +4,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { ProjectItem, ActivityEntry, Stakeholder } from "./collaboration";
+import { GUARDIAN_DEMO_MODE } from "./demo-mode";
 
 // Work entry type for calendar tracking
 export type WorkEntry = {
@@ -348,6 +349,9 @@ export const useGuardianStore = create<GuardianState>()(
       },
 
       initializeWithDemoData: () => {
+        if (!GUARDIAN_DEMO_MODE) {
+          return;
+        }
         const state = get();
 
         // Only initialize if empty

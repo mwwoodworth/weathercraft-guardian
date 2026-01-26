@@ -65,6 +65,7 @@ import {
   generateDemoDailyLogs,
   DEMO_MILESTONES
 } from "@/lib/analytics";
+import { GUARDIAN_DEMO_MODE } from "@/lib/demo-mode";
 
 // ============ ANIMATED COUNTER COMPONENT ============
 
@@ -139,10 +140,26 @@ export default function AnalyticsDashboard({
 }: AnalyticsDashboardProps) {
   const [activeSection, setActiveSection] = useState<"production" | "weather" | "timeline">("production");
 
-  // Use demo data if not provided
-  const workEntries = propWorkEntries || generateDemoProductionHistory();
-  const dailyLogs = propDailyLogs || generateDemoDailyLogs();
-  const milestones = DEMO_MILESTONES;
+  const demoMode = GUARDIAN_DEMO_MODE;
+  const workEntries = propWorkEntries ?? (demoMode ? generateDemoProductionHistory() : {});
+  const dailyLogs = propDailyLogs ?? (demoMode ? generateDemoDailyLogs() : []);
+  const milestones = demoMode ? DEMO_MILESTONES : [];
+  const hasData = Object.keys(workEntries).length > 0 || dailyLogs.length > 0 || milestones.length > 0;
+
+  if (!demoMode && !hasData) {
+    return (
+      <Card className="glass-card border border-white/10">
+        <CardHeader>
+          <CardTitle className="text-base">Advanced Analytics</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          No production analytics data is connected yet. Enable live data sources or set{" "}
+          <code className="px-1 py-0.5 rounded bg-white/10">NEXT_PUBLIC_GUARDIAN_DEMO_MODE=true</code>{" "}
+          to view demo metrics.
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Calculate all metrics
   const productionMetrics = calculateProductionMetrics(workEntries);

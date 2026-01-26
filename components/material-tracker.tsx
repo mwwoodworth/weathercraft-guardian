@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Info
 } from "lucide-react";
+import { GUARDIAN_DEMO_MODE } from "@/lib/demo-mode";
 
 // Mock inventory data - in production would come from database
 type InventoryItem = {
@@ -176,10 +177,13 @@ export default function MaterialTracker({
   isPrecipitating,
   tempTrend
 }: MaterialTrackerProps) {
+  const demoMode = GUARDIAN_DEMO_MODE;
   const [expandedMaterials, setExpandedMaterials] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"cards" | "inventory" | "usage">("cards");
   // Use state with initializer function for consistent time reference
   const [currentTime] = useState(() => Date.now());
+  const inventoryData = demoMode ? MOCK_INVENTORY : [];
+  const usageData = demoMode ? MOCK_USAGE : [];
 
   const toggleMaterial = (id: string) => {
     const next = new Set(expandedMaterials);
@@ -193,23 +197,38 @@ export default function MaterialTracker({
     return MATERIALS.map(material => ({
       material,
       compliance: checkCompliance(material.id, currentTemp, windSpeed, isPrecipitating, tempTrend),
-      inventory: MOCK_INVENTORY.find(i => i.materialId === material.id)
+      inventory: inventoryData.find(i => i.materialId === material.id)
     }));
-  }, [currentTemp, windSpeed, isPrecipitating, tempTrend]);
+  }, [currentTemp, windSpeed, isPrecipitating, tempTrend, inventoryData]);
 
   const goCount = materialCompliance.filter(m => m.compliance.compliant).length;
-  const lowStockCount = MOCK_INVENTORY.filter(i => i.quantity <= i.reorderPoint).length;
-  const conditioningCount = MOCK_INVENTORY.filter(i => i.conditioningRequired).length;
+  const lowStockCount = inventoryData.filter(i => i.quantity <= i.reorderPoint).length;
+  const conditioningCount = inventoryData.filter(i => i.conditioningRequired).length;
 
   // Use currentTime for date calculations
   const todayString = new Date(currentTime).toDateString();
 
   // Calculate today's usage
-  const todayUsage = MOCK_USAGE.filter(u =>
+  const todayUsage = usageData.filter(u =>
     u.date.toDateString() === todayString
   );
   const todayTotal = todayUsage.reduce((sum, u) => sum + u.quantity, 0);
   const todayWaste = todayUsage.reduce((sum, u) => sum + (u.waste || 0), 0);
+
+  if (!demoMode && inventoryData.length === 0) {
+    return (
+      <Card className="glass-card border border-white/10">
+        <CardHeader>
+          <CardTitle className="text-base">Material Tracker</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          No material inventory data is connected yet. Enable live inventory sources or set{" "}
+          <code className="px-1 py-0.5 rounded bg-white/10">NEXT_PUBLIC_GUARDIAN_DEMO_MODE=true</code>{" "}
+          to view demo data.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

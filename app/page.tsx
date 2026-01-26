@@ -5,8 +5,20 @@ import MainDashboard from "@/components/main-dashboard";
 
 export const revalidate = 300; // Revalidate every 5 minutes
 
-export default async function Home() {
-  const defaultProject = PROJECTS[0]; // Peterson SFB - Bldg 140
+export default async function Home({
+  searchParams
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  const requestedProjectId =
+    (typeof searchParams?.project === "string" && searchParams.project) ||
+    (typeof searchParams?.projectId === "string" && searchParams.projectId) ||
+    process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID ||
+    process.env.WEATHERCRAFT_GUARDIAN_PROJECT_ID ||
+    undefined;
+
+  const defaultProject =
+    PROJECTS.find((project) => project.id === requestedProjectId) ?? PROJECTS[0]; // Peterson SFB - Bldg 140
 
   // Parallel fetch weather data (server-side)
   const [current, forecast] = await Promise.all([

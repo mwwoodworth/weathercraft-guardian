@@ -19,6 +19,7 @@ import {
   XCircle,
   Shield
 } from "lucide-react";
+import { resolveWeatherIcon } from "@/lib/weather";
 
 // ========== MOBILE HOOKS ==========
 export function useIsMobile() {
@@ -319,7 +320,7 @@ export function MobileTempDisplay({ temp, condition, icon, high, low }: MobileTe
       </div>
       {icon && (
         <img
-          src={`https://openweathermap.org/img/wn/${icon}@2x.png`}
+          src={resolveWeatherIcon(icon)}
           alt={condition}
           className="w-16 h-16 -mt-2"
         />

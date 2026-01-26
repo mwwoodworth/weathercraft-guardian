@@ -93,8 +93,8 @@ interface ReportGeneratorProps {
 export function ReportGenerator({
   open,
   onOpenChange,
-  projectName = "Peterson SFB - Bldg 140",
-  projectLocation = "Colorado Springs, CO"
+  projectName = "Peterson Space Force Base - Bldg 140",
+  projectLocation = "Peterson Space Force Base, Colorado Springs, CO"
 }: ReportGeneratorProps) {
   const [reportType, setReportType] = useState<ReportType>("daily_summary");
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));

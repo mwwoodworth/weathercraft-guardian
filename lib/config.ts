@@ -1,10 +1,10 @@
 export const PROJECTS = [
   {
     id: "peterson-sfb-b140",
-    name: "Peterson SFB - Bldg 140",
-    lat: 38.82405876264266,
-    lon: -104.71124774161716,
-    location: "Colorado Springs, CO",
+    name: "Peterson Space Force Base - Bldg 140",
+    lat: 38.82357,
+    lon: -104.69501,
+    location: "Peterson Space Force Base, Colorado Springs, CO",
     defaultMaterials: ["green-lock-plus", "r-mer-seal"]
   },
   {

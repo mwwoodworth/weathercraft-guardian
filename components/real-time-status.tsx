@@ -36,6 +36,8 @@ type RealTimeStatusProps = {
     lon: number;
     name: string;
   };
+  sunrise?: number;
+  sunset?: number;
   lastWeatherUpdate?: Date;
   assemblyGoCount: number;
   totalAssemblies: number;
@@ -44,8 +46,7 @@ type RealTimeStatusProps = {
   onRefresh?: () => void | Promise<void>;
 };
 
-// Calculate sunrise/sunset times (simplified algorithm for demo)
-// In production, use a proper library like suncalc
+// Calculate sunrise/sunset times (fallback approximation)
 function calculateSunTimes(lat: number, date: Date) {
   // Simplified calculation - approximation for Colorado Springs area
   const dayOfYear = Math.floor(
@@ -73,6 +74,8 @@ function calculateSunTimes(lat: number, date: Date) {
 
 export default function RealTimeStatus({
   projectLocation,
+  sunrise,
+  sunset,
   lastWeatherUpdate,
   assemblyGoCount,
   totalAssemblies,
@@ -88,13 +91,16 @@ export default function RealTimeStatus({
   const [alerts, setAlerts] = useState<StatusAlert[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Calculate sun times (use current time or fallback to now for SSR)
+  // Calculate sun times (prefer API data, fallback to approximation)
   const currentDateString = currentTime?.toDateString() ?? "";
-  const { sunrise, sunset } = useMemo(
-    () => calculateSunTimes(projectLocation.lat, currentTime || new Date()),
+  const sunTimes = useMemo(() => {
+    if (typeof sunrise === "number" && typeof sunset === "number") {
+      return { sunrise: new Date(sunrise * 1000), sunset: new Date(sunset * 1000), source: "api" as const };
+    }
+    const fallback = calculateSunTimes(projectLocation.lat, currentTime || new Date());
+    return { ...fallback, source: "fallback" as const };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [projectLocation.lat, currentDateString]
-  );
+  }, [projectLocation.lat, currentDateString, sunrise, sunset]);
 
   const fallbackStats: WorkLogStats = {
     totalDays: 0,
@@ -317,16 +323,16 @@ export default function RealTimeStatus({
                 <div className="flex items-center gap-2 text-sm">
                   <Sunrise className="w-4 h-4 text-amber-400" />
                   <span className="text-muted-foreground">Rise:</span>
-                  <span className="font-mono font-medium">{formatTimeShort(sunrise)}</span>
+                  <span className="font-mono font-medium">{formatTimeShort(sunTimes.sunrise)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Sunset className="w-4 h-4 text-orange-400" />
                   <span className="text-muted-foreground">Set:</span>
-                  <span className="font-mono font-medium">{formatTimeShort(sunset)}</span>
+                  <span className="font-mono font-medium">{formatTimeShort(sunTimes.sunset)}</span>
                 </div>
                 {/* Daylight indicator */}
                 <div className="flex items-center gap-1 mt-1">
-                  {currentTime && currentTime >= sunrise && currentTime <= sunset ? (
+                  {currentTime && currentTime >= sunTimes.sunrise && currentTime <= sunTimes.sunset ? (
                     <span className="flex items-center gap-1 text-xs text-amber-400">
                       <Sun className="w-3 h-3" /> Daylight
                     </span>

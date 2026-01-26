@@ -14,6 +14,7 @@ export type WeatherData = {
   dt: number;
   sunrise?: number;
   sunset?: number;
+  timezone?: string;
 };
 
 export type DailyForecast = {
@@ -29,6 +30,11 @@ export type DailyForecast = {
   icon: string;
   hourlyData: WeatherData[];
 };
+
+export function resolveWeatherIcon(icon: string): string {
+  if (icon.startsWith("http")) return icon;
+  return `https://openweathermap.org/img/wn/${icon}@2x.png`;
+}
 
 // Fetch current weather via server API route
 export async function getCurrentWeather(lat: number, lon: number): Promise<WeatherData> {
@@ -53,10 +59,20 @@ export async function getForecast(lat: number, lon: number): Promise<WeatherData
 // Group forecast data by day for calendar view
 export function groupForecastByDay(forecast: WeatherData[]): DailyForecast[] {
   const dayMap = new Map<string, WeatherData[]>();
+  const timeZone = forecast.find(entry => entry.timezone)?.timezone ?? "UTC";
+
+  const toDayKey = (entry: WeatherData) => {
+    const date = new Date(entry.dt * 1000);
+    return new Intl.DateTimeFormat("en-CA", { timeZone }).format(date);
+  };
+  const toLocalHour = (entry: WeatherData) => {
+    const date = new Date(entry.dt * 1000);
+    const hour = new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", hour12: false }).format(date);
+    return Number(hour);
+  };
 
   for (const entry of forecast) {
-    const date = new Date(entry.dt * 1000);
-    const dayKey = date.toISOString().split('T')[0];
+    const dayKey = toDayKey(entry);
 
     if (!dayMap.has(dayKey)) {
       dayMap.set(dayKey, []);
@@ -66,8 +82,8 @@ export function groupForecastByDay(forecast: WeatherData[]): DailyForecast[] {
 
   const dailyForecasts: DailyForecast[] = [];
 
-  for (const [dayKey, hourlyData] of dayMap) {
-    const date = new Date(dayKey);
+  for (const [, hourlyData] of dayMap) {
+    const representativeDate = new Date(hourlyData[0].dt * 1000);
     const temps = hourlyData.map(h => h.temp);
     const winds = hourlyData.map(h => h.wind_speed);
     const humidities = hourlyData.map(h => h.humidity);
@@ -83,13 +99,13 @@ export function groupForecastByDay(forecast: WeatherData[]): DailyForecast[] {
 
     // Get midday icon
     const middayEntry = hourlyData.find(h => {
-      const hour = new Date(h.dt * 1000).getHours();
+      const hour = toLocalHour(h);
       return hour >= 10 && hour <= 14;
     }) || hourlyData[0];
 
     dailyForecasts.push({
-      date,
-      dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+      date: representativeDate,
+      dayName: new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(representativeDate),
       high: Math.max(...temps),
       low: Math.min(...temps),
       avgTemp: temps.reduce((a, b) => a + b, 0) / temps.length,

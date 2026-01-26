@@ -302,7 +302,7 @@ export function getProjectManifest(): ProjectManifest {
   cachedManifest = {
     projectName: "PSFB Building 140",
     projectId: "250001",
-    location: "Peterson SFB, CO",
+    location: "Peterson Space Force Base, Colorado Springs, CO",
     rootPath,
     updatedAt: new Date().toISOString(),
     documents,

@@ -24,6 +24,7 @@ import {
   getCurrentWeather,
   getForecast,
   groupForecastByDay,
+  resolveWeatherIcon,
   toWeatherConditions,
   dailyToWeatherConditions,
   forecastToWeatherConditionsArray
@@ -55,6 +56,13 @@ import ProjectHub from "@/components/project-hub";
 import WinterWorkPlan from "@/components/winter-work-plan";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -129,13 +137,18 @@ export default function MainDashboard({
   const [dailyForecasts, setDailyForecasts] = useState<DailyForecast[]>(initialDailyForecasts);
   const [lastUpdated, setLastUpdated] = useState<Date | undefined>(new Date());
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [activeProject, setActiveProject] = useState(defaultProject);
+
+  useEffect(() => {
+    setActiveProject(defaultProject);
+  }, [defaultProject.id]);
 
   const refreshWeather = useCallback(async () => {
     setWeatherError(null);
     try {
       const [current, hourly] = await Promise.all([
-        getCurrentWeather(defaultProject.lat, defaultProject.lon),
-        getForecast(defaultProject.lat, defaultProject.lon)
+        getCurrentWeather(activeProject.lat, activeProject.lon),
+        getForecast(activeProject.lat, activeProject.lon)
       ]);
       setWeather(current);
       setForecast(hourly);
@@ -145,7 +158,7 @@ export default function MainDashboard({
       const message = error instanceof Error ? error.message : "Weather update failed";
       setWeatherError(message);
     }
-  }, [defaultProject.lat, defaultProject.lon]);
+  }, [activeProject.lat, activeProject.lon]);
 
   // Initial data fetch on mount - legitimate async data fetching pattern
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -183,6 +196,13 @@ export default function MainDashboard({
     else next.add(id);
     setExpandedAssemblies(next);
   };
+
+  const handleProjectChange = useCallback((projectId: string) => {
+    const nextProject = PROJECTS.find((project) => project.id === projectId);
+    if (nextProject) {
+      setActiveProject(nextProject);
+    }
+  }, []);
 
   // Project hub summary count for tab badge
   const openItems = projectManifest.rfis.length + projectManifest.submittals.length;
@@ -234,11 +254,19 @@ export default function MainDashboard({
               <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Live</span>
             </div>
             {/* Project selector */}
-            <div className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 hover:bg-white/10 transition-all duration-300 cursor-pointer backdrop-blur-sm group">
-              <MapPin className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium">{defaultProject.name}</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
+            <Select value={activeProject.id} onValueChange={handleProjectChange}>
+              <SelectTrigger className="h-auto px-3 py-2 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 hover:bg-white/10 transition-all duration-300 backdrop-blur-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <SelectValue placeholder={activeProject.name} />
+              </SelectTrigger>
+              <SelectContent>
+                {PROJECTS.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name} • {project.location}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {/* Live clock */}
             <div className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -291,7 +319,7 @@ export default function MainDashboard({
           goCount={goCount}
           expandedAssemblies={expandedAssemblies}
           toggleAssembly={toggleAssembly}
-          project={defaultProject}
+          project={activeProject}
           executiveSummary={executiveSummary}
           topInsights={aiInsights.slice(0, 2)}
           workLogStats={workLogStats}
@@ -522,6 +550,8 @@ function DashboardView({ conditions, weather, hourlyForecast, assemblyResults, s
             {/* Real-time status - full width at top */}
             <RealTimeStatus
               projectLocation={{ lat: project.lat, lon: project.lon, name: project.name }}
+              sunrise={weather.sunrise}
+              sunset={weather.sunset}
               lastWeatherUpdate={lastWeatherUpdate}
               assemblyGoCount={goCount}
               totalAssemblies={assemblyResults.length}
@@ -968,7 +998,7 @@ function ForecastCard({ day, goCount, total, isToday }: {
       <CardContent className="p-4 text-center">
         <div className={`text-lg font-bold ${isToday ? 'text-primary' : ''}`}>{isToday ? 'TODAY' : day.dayName}</div>
         <div className="text-xs text-muted-foreground mb-2">{day.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-        <img src={`https://openweathermap.org/img/wn/${day.icon}@2x.png`} alt={day.conditions} className="w-12 h-12 mx-auto" />
+        <img src={resolveWeatherIcon(day.icon)} alt={day.conditions} className="w-12 h-12 mx-auto" />
         <div className="font-mono text-sm">
           <span className="text-emerald-400">{Math.round(day.high)}°</span> / <span className="text-blue-400">{Math.round(day.low)}°</span>
         </div>
