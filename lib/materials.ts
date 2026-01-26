@@ -1,7 +1,7 @@
 export type WeatherConstraint = {
   minTemp?: number;
   maxTemp?: number;
-  rising?: boolean; // If true, temp must be rising (usually means check forecast for next few hours)
+  rising?: boolean; // If true, temp must be rising
   noPrecip?: boolean;
   maxWind?: number;
   maxHumidity?: number;
@@ -9,21 +9,34 @@ export type WeatherConstraint = {
   storageTempMin?: number;
 };
 
+export type RoofingSystem = "modified" | "ssmr";
+
 export type Material = {
   id: string;
   name: string;
-  category: "Roofing (Mod. Bit.)" | "Roofing (Metal)" | "Roofing (Coatings)" | "HVAC" | "Electrical" | "General";
+  system: RoofingSystem;
+  category: string;
   constraints: WeatherConstraint;
   description: string;
+  tempSensitive: boolean; // Whether this product has temperature requirements
+  requiredHours: number; // Work window duration needed
+  leadTimeHours: number; // Staging lead time
   manufacturerUrl?: string;
 };
 
-export const MATERIALS: Material[] = [
+// =====================================================
+// MODIFIED BITUMEN SYSTEM - All temp sensitive
+// =====================================================
+const MODIFIED_MATERIALS: Material[] = [
   {
     id: "green-lock-plus",
     name: "Green-Lock Plus Membrane Adhesive",
-    category: "Roofing (Mod. Bit.)",
-    description: "Cold-applied adhesive for modified bitumen. Critical: Must be 40°F and rising.",
+    system: "modified",
+    category: "Adhesive",
+    description: "Cold-applied adhesive for modified bitumen. Must be 40°F and rising.",
+    tempSensitive: true,
+    requiredHours: 3,
+    leadTimeHours: 12,
     constraints: {
       minTemp: 40,
       rising: true,
@@ -31,10 +44,109 @@ export const MATERIALS: Material[] = [
     }
   },
   {
+    id: "garla-block-2k",
+    name: "Garla-Block 2K Primer",
+    system: "modified",
+    category: "Primer",
+    description: "Primer for modified bitumen. Do not use if temp drops below 50°F within 6 hours.",
+    tempSensitive: true,
+    requiredHours: 6,
+    leadTimeHours: 18,
+    constraints: {
+      minTemp: 50,
+      noPrecip: true,
+      storageTempMin: 40,
+      storageTempMax: 90
+    }
+  },
+  {
+    id: "garla-flex",
+    name: "Garla-Flex Mastic",
+    system: "modified",
+    category: "Mastic/Sealant",
+    description: "Mastic for modified bitumen. Application below 40°F not recommended.",
+    tempSensitive: true,
+    requiredHours: 2,
+    leadTimeHours: 12,
+    constraints: {
+      minTemp: 40,
+      noPrecip: true,
+    }
+  },
+  {
+    id: "tuff-stuff-ms",
+    name: "Tuff-Stuff® MS Sealant",
+    system: "modified",
+    category: "Mastic/Sealant",
+    description: "MS polymer sealant. Heat sensitive storage.",
+    tempSensitive: true,
+    requiredHours: 2,
+    leadTimeHours: 12,
+    constraints: {
+      minTemp: 40,
+      storageTempMax: 80,
+      noPrecip: true
+    }
+  },
+  {
+    id: "optimax-membrane",
+    name: "OptiMax® Mineral Membrane",
+    system: "modified",
+    category: "Membrane",
+    description: "Mod Bit membrane rolls. Store above 50°F. Cold weather: Only remove immediate install rolls.",
+    tempSensitive: true,
+    requiredHours: 4,
+    leadTimeHours: 24,
+    constraints: {
+      minTemp: 40,
+      noPrecip: true,
+      storageTempMin: 50
+    }
+  },
+  {
+    id: "pyramic-plus-lo",
+    name: "Pyramic® Plus LO Coating",
+    system: "modified",
+    category: "Coating",
+    description: "Reflective coating. Do not allow to freeze. Extended dry window required.",
+    tempSensitive: true,
+    requiredHours: 24,
+    leadTimeHours: 24,
+    constraints: {
+      minTemp: 33,
+      noPrecip: true,
+    }
+  },
+  {
+    id: "tuff-flash-plus",
+    name: "Tuff-Flash™ Plus LO",
+    system: "modified",
+    category: "Liquid Flashing",
+    description: "Liquid flashing. Requires dry surface and mild temperatures.",
+    tempSensitive: true,
+    requiredHours: 3,
+    leadTimeHours: 12,
+    constraints: {
+      minTemp: 35,
+      noPrecip: true,
+    }
+  },
+];
+
+// =====================================================
+// SSMR (STANDING SEAM METAL ROOF) SYSTEM
+// Only R-Mer Seal is temp sensitive
+// =====================================================
+const SSMR_MATERIALS: Material[] = [
+  {
     id: "r-mer-seal",
     name: "R-Mer Seal Underlayment",
-    category: "Roofing (Metal)",
-    description: "High-temp self-adhering underlayment. Installation 50°F and rising.",
+    system: "ssmr",
+    category: "Underlayment",
+    description: "High-temp self-adhering underlayment. Installation requires 50°F and rising for warranty compliance.",
+    tempSensitive: true,
+    requiredHours: 3,
+    leadTimeHours: 12,
     constraints: {
       minTemp: 50,
       maxTemp: 100,
@@ -43,84 +155,83 @@ export const MATERIALS: Material[] = [
     }
   },
   {
-    id: "garla-block-2k",
-    name: "Garla-Block 2K (Primer)",
-    category: "Roofing (Mod. Bit.)",
-    description: "Primer. Do not use if temp drops below 50°F within 6 hours.",
+    id: "metal-panel-install",
+    name: "Metal Panel Installation",
+    system: "ssmr",
+    category: "Panel Installation",
+    description: "Standing seam metal panel installation. Wind-sensitive, avoid gusts.",
+    tempSensitive: false,
+    requiredHours: 3,
+    leadTimeHours: 12,
     constraints: {
-      minTemp: 50, // Effective min temp due to "within 6 hours" rule
-      noPrecip: true,
-      storageTempMin: 40,
-      storageTempMax: 90
-    }
-  },
-  {
-    id: "garla-flex",
-    name: "Garla-Flex (Mastic)",
-    category: "Roofing (Mod. Bit.)",
-    description: "Mastic. Application below 40°F not recommended.",
-    constraints: {
-      minTemp: 40,
-      noPrecip: true,
-    }
-  },
-  {
-    id: "tuff-stuff-ms",
-    name: "Tuff-Stuff® MS (Sealant)",
-    category: "Roofing (Mod. Bit.)",
-    description: "Sealant. Heat sensitive storage.",
-    constraints: {
-      storageTempMax: 80,
+      minTemp: 20,
+      maxWind: 25,
       noPrecip: true
     }
   },
   {
-    id: "optimax-membrane",
-    name: "OptiMax® Mineral Membrane",
-    category: "Roofing (Mod. Bit.)",
-    description: "Mod Bit rolls. Store above 50°F. Cold weather: Only remove immediate install rolls.",
+    id: "ssmr-fasteners",
+    name: "Panel Fasteners & Clips",
+    system: "ssmr",
+    category: "Fasteners",
+    description: "Concealed clip system and fasteners. No temperature restrictions.",
+    tempSensitive: false,
+    requiredHours: 2,
+    leadTimeHours: 6,
     constraints: {
-      minTemp: 40, // General roofing rule
-      noPrecip: true,
-      storageTempMin: 50
-    }
-  },
-  {
-    id: "pyramic-plus-lo",
-    name: "Pyramic® Plus LO (Reflective Coating)",
-    category: "Roofing (Coatings)",
-    description: "Reflective coating. Do not allow to freeze.",
-    constraints: {
-      minTemp: 33, // "Do not freeze"
-      noPrecip: true,
-    }
-  },
-  {
-    id: "tuff-flash-plus",
-    name: "Tuff-Flash™ Plus LO (Liquid Flashing)",
-    category: "Roofing (Mod. Bit.)",
-    description: "Liquid flashing. Service temp wide range, but application needs dry surface.",
-    constraints: {
-      noPrecip: true,
-    }
-  },
-  {
-    id: "general-roofing",
-    name: "General Roofing Installation",
-    category: "General",
-    description: "Base rule: Do not install roofing when air temp is below 40°F.",
-    constraints: {
-      minTemp: 40,
-      maxWind: 20, // Standard safety
+      maxWind: 25,
       noPrecip: true
     }
-  }
+  },
+  {
+    id: "ssmr-trim",
+    name: "Metal Trim & Flashing",
+    system: "ssmr",
+    category: "Trim",
+    description: "Pre-formed metal trim and flashing. Wind restrictions only.",
+    tempSensitive: false,
+    requiredHours: 2,
+    leadTimeHours: 6,
+    constraints: {
+      maxWind: 20,
+      noPrecip: true
+    }
+  },
 ];
 
+// All materials combined
+export const MATERIALS: Material[] = [...MODIFIED_MATERIALS, ...SSMR_MATERIALS];
+
+// Get materials by system
+export function getMaterialsBySystem(system: RoofingSystem): Material[] {
+  return MATERIALS.filter(m => m.system === system);
+}
+
+// Get temp-sensitive materials only
+export function getTempSensitiveMaterials(): Material[] {
+  return MATERIALS.filter(m => m.tempSensitive);
+}
+
+// System display info
+export const SYSTEMS = {
+  modified: {
+    name: "Modified Bitumen System",
+    shortName: "Modified",
+    description: "Temperature-sensitive membrane roofing system",
+    allTempSensitive: true,
+  },
+  ssmr: {
+    name: "Standing Seam Metal Roof (SSMR)",
+    shortName: "SSMR",
+    description: "Metal panel roofing system",
+    allTempSensitive: false,
+  }
+} as const;
+
 export function checkCompliance(
-  materialId: string, 
-  currentTemp: number, 
-  windSpeed: number, 
+  materialId: string,
+  currentTemp: number,
+  windSpeed: number,
   isPrecipitating: boolean,
   tempTrend?: "rising" | "falling" | "stable"
 ): { compliant: boolean; reasons: string[] } {

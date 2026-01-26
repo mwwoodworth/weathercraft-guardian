@@ -345,12 +345,7 @@ export default function MainDashboard({
 
       {activeTab === "hub" && <ProjectHub manifest={projectManifest} />}
 
-      {activeTab === "winter" && (
-        <WinterWorkPlan
-          dailyForecasts={dailyForecasts}
-          hourlyForecast={forecast}
-        />
-      )}
+      {activeTab === "winter" && <WinterWorkPlan />}
     </div>
   );
 }

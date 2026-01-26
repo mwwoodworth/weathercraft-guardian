@@ -1,29 +1,29 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
-  CalendarDays,
   ClipboardCheck,
   FileText,
   Printer,
-  Shield,
   Thermometer,
   Wind,
   CloudRain,
-  AlertTriangle
+  Clock,
+  TrendingUp,
+  Warehouse,
+  Layers,
+  Wrench
 } from "lucide-react";
 
-// Card components available from @/components/ui/card if needed
 import { Badge } from "@/components/ui/badge";
-import type { WeatherData, DailyForecast } from "@/lib/weather";
-import { getWorkPackages, findWorkWindows, buildDailySuitability } from "@/lib/winter-planner";
+import { MATERIALS, SYSTEMS, type Material, type RoofingSystem } from "@/lib/materials";
 
 const PLAN_SECTIONS = [
   {
     title: "Temperature Protocols",
     items: [
-      "No adhesive application when ambient temp is below 40F or falling.",
-      "No metal underlayment installation below 50F or with falling temps.",
+      "No adhesive application when ambient temp is below 40°F or falling.",
+      "No metal underlayment installation below 50°F or with falling temps.",
       "Suspend coating work if overnight lows threaten freezing.",
       "Document temperatures at 6:00 AM, 12:00 PM, 4:00 PM daily."
     ]
@@ -40,7 +40,7 @@ const PLAN_SECTIONS = [
   {
     title: "Material Storage",
     items: [
-      "Maintain adhesive storage between 60F and 80F.",
+      "Maintain adhesive storage between 60°F and 80°F.",
       "Stage rolls inside heated enclosure minimum 24 hours before use.",
       "Protect coatings from freezing at all times.",
       "Document material conditioning start/end times in daily log."
@@ -49,8 +49,8 @@ const PLAN_SECTIONS = [
   {
     title: "Crew Safety",
     items: [
-      "Mandatory cold-weather PPE below 40F.",
-      "Warm-up breaks every 60 minutes below 35F.",
+      "Mandatory cold-weather PPE below 40°F.",
+      "Warm-up breaks every 60 minutes below 35°F.",
       "Buddy system required on roof when conditions are icy.",
       "Slip-resistant footwear required at all times."
     ]
@@ -66,35 +66,13 @@ const PLAN_SECTIONS = [
   }
 ];
 
-export default function WinterWorkPlan({
-  dailyForecasts,
-  hourlyForecast
-}: {
-  dailyForecasts: DailyForecast[];
-  hourlyForecast: WeatherData[];
-}) {
-  const packages = useMemo(() => getWorkPackages(), []);
-
-  const windowData = useMemo(() => {
-    return packages.map(pkg => {
-      const windows = findWorkWindows(hourlyForecast, pkg).slice(0, 2);
-      return {
-        pkg,
-        windows
-      };
-    });
-  }, [packages, hourlyForecast]);
-
-  const suitability = useMemo(() => {
-    return packages.map(pkg => ({
-      pkg,
-      days: buildDailySuitability(dailyForecasts, pkg)
-    }));
-  }, [packages, dailyForecasts]);
+export default function WinterWorkPlan() {
+  // Group materials by system
+  const modifiedMaterials = MATERIALS.filter(m => m.system === "modified");
+  const ssmrMaterials = MATERIALS.filter(m => m.system === "ssmr");
 
   // Hydration-safe date - only render on client
   const [planDate, setPlanDate] = useState<string | null>(null);
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const formattedDate = new Date().toLocaleDateString("en-US", {
       month: "long",
@@ -103,7 +81,6 @@ export default function WinterWorkPlan({
     });
     setPlanDate(formattedDate);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div className="space-y-6">
@@ -112,7 +89,7 @@ export default function WinterWorkPlan({
           <h2 className="text-xl font-bold flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-primary" /> Winter Work Plan
           </h2>
-          <p className="text-sm text-muted-foreground">Printable plan for temperature-sensitive work and approvals.</p>
+          <p className="text-sm text-muted-foreground">Product constraints by roofing system.</p>
         </div>
         <button
           onClick={() => window.print()}
@@ -140,110 +117,22 @@ export default function WinterWorkPlan({
             </div>
             <div className="grid gap-3 md:grid-cols-3">
               <InfoChip icon={<Thermometer className="w-4 h-4" />} label="Temp Sensitive" value="Adhesives, Underlayment, Coatings" />
-              <InfoChip icon={<Wind className="w-4 h-4" />} label="Wind Limit" value="20 mph sustained" />
+              <InfoChip icon={<Wind className="w-4 h-4" />} label="Wind Limit" value="20-25 mph depending on work" />
               <InfoChip icon={<CloudRain className="w-4 h-4" />} label="Precipitation" value="No active precip" />
             </div>
           </header>
 
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <CalendarDays className="w-5 h-5 text-blue-600" /> Weather Window Planner (Next 5 Days)
-            </div>
-            <div className="grid gap-4">
-              {windowData.map(({ pkg, windows }) => (
-                <div key={pkg.id} className="border border-border/50 rounded-lg p-4 bg-background/40">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-foreground">{pkg.name}</div>
-                      <div className="text-xs text-muted-foreground">{pkg.description}</div>
-                    </div>
-                    <Badge className="bg-primary text-primary-foreground">Lead Time {pkg.leadTimeHours}h</Badge>
-                  </div>
-                  {windows.length === 0 ? (
-                    <div className="mt-3 text-sm text-rose-400 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" /> No viable window in forecast. Use winter hold plan.
-                    </div>
-                  ) : (
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      {windows.map((window, idx) => (
-                        <div key={`${pkg.id}-${idx}`} className="rounded-md border border-border/50 bg-muted/40 p-3">
-                          <div className="text-xs uppercase tracking-wide text-muted-foreground">Window {idx + 1}</div>
-                          <div className="text-sm font-semibold text-foreground">
-                            {formatDateTime(window.start)} - {formatDateTime(window.end)}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Stage by {formatDateTime(new Date(window.start.getTime() - pkg.leadTimeHours * 3600 * 1000))}
-                          </div>
-                          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                            <div className="rounded bg-background/60 px-2 py-1 text-muted-foreground">{window.durationHours}h</div>
-                            <div className="rounded bg-background/60 px-2 py-1 text-muted-foreground">Avg {window.avgTemp}F</div>
-                            <div className="rounded bg-background/60 px-2 py-1 text-muted-foreground">{window.confidence}% conf</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* Modified Bitumen System */}
+          <SystemSection
+            systemKey="modified"
+            materials={modifiedMaterials}
+          />
 
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Shield className="w-5 h-5 text-emerald-600" /> 5-Day Suitability Matrix
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs border border-border/50">
-                <thead className="bg-muted/40">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Package</th>
-                    {dailyForecasts.slice(0, 5).map(day => (
-                      <th key={day.date.toISOString()} className="px-3 py-2 text-center">
-                        {day.dayName}<br />
-                        <span className="text-muted-foreground">{day.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {suitability.map(row => (
-                    <tr key={row.pkg.id} className="border-t border-border/50">
-                      <td className="px-3 py-2 font-medium">{row.pkg.name}</td>
-                      {row.days.map(day => (
-                        <td key={day.date.toISOString()} className="px-3 py-2 text-center">
-                          <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(day.status)}`}>
-                            {day.status.toUpperCase()}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <FileText className="w-5 h-5 text-indigo-600" /> Material Constraint Matrix
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {packages.map(pkg => (
-                <div key={pkg.id} className="border border-border/50 rounded-lg p-4 bg-background/40">
-                  <div className="font-semibold text-foreground">{pkg.name}</div>
-                  <div className="text-xs text-muted-foreground mb-2">{pkg.description}</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Constraint label="Min Temp" value={pkg.constraints.minTemp ? `${pkg.constraints.minTemp}F` : "-"} />
-                    <Constraint label="Max Temp" value={pkg.constraints.maxTemp ? `${pkg.constraints.maxTemp}F` : "-"} />
-                    <Constraint label="Rising Temp" value={pkg.constraints.rising ? "Yes" : "No"} />
-                    <Constraint label="No Precip" value={pkg.constraints.noPrecip ? "Yes" : "No"} />
-                    <Constraint label="Max Wind" value={pkg.constraints.maxWind ? `${pkg.constraints.maxWind} mph` : "-"} />
-                    <Constraint label="Required Hours" value={`${pkg.requiredHours}h`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* SSMR System */}
+          <SystemSection
+            systemKey="ssmr"
+            materials={ssmrMaterials}
+          />
 
           <section className="space-y-4">
             <div className="text-lg font-semibold text-foreground">Field Protocols</div>
@@ -276,6 +165,167 @@ export default function WinterWorkPlan({
   );
 }
 
+function SystemSection({ systemKey, materials }: { systemKey: RoofingSystem; materials: Material[] }) {
+  const system = SYSTEMS[systemKey];
+  const tempSensitiveCount = materials.filter(m => m.tempSensitive).length;
+  const icon = systemKey === "modified" ? <Layers className="w-5 h-5" /> : <Wrench className="w-5 h-5" />;
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          {icon}
+          <span>{system.name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {system.allTempSensitive ? (
+            <Badge variant="destructive" className="text-xs">All Temp Sensitive</Badge>
+          ) : (
+            <Badge variant="secondary" className="text-xs">{tempSensitiveCount} of {materials.length} Temp Sensitive</Badge>
+          )}
+        </div>
+      </div>
+      <p className="text-sm text-muted-foreground -mt-2">{system.description}</p>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {materials.map(material => (
+          <MaterialCard key={material.id} material={material} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MaterialCard({ material }: { material: Material }) {
+  const { constraints } = material;
+
+  return (
+    <div className={`border rounded-lg p-4 bg-background/40 ${material.tempSensitive ? 'border-amber-500/50' : 'border-border/50'}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div>
+          <div className="font-semibold text-foreground">{material.name}</div>
+          <div className="text-xs text-muted-foreground">{material.category}</div>
+        </div>
+        {material.tempSensitive && (
+          <Badge variant="outline" className="text-amber-500 border-amber-500/50 text-[10px] shrink-0">
+            <Thermometer className="w-3 h-3 mr-1" />
+            Temp Sensitive
+          </Badge>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">{material.description}</p>
+
+      <div className="grid grid-cols-3 gap-2 text-xs">
+        {/* Temperature Constraints */}
+        {constraints.minTemp !== undefined && (
+          <ConstraintPill
+            icon={<Thermometer className="w-3 h-3" />}
+            label="Min"
+            value={`${constraints.minTemp}°F`}
+            variant="temp"
+          />
+        )}
+        {constraints.maxTemp !== undefined && (
+          <ConstraintPill
+            icon={<Thermometer className="w-3 h-3" />}
+            label="Max"
+            value={`${constraints.maxTemp}°F`}
+            variant="temp"
+          />
+        )}
+        {constraints.rising && (
+          <ConstraintPill
+            icon={<TrendingUp className="w-3 h-3" />}
+            label="Rising"
+            value="Required"
+            variant="temp"
+          />
+        )}
+
+        {/* Wind Constraint */}
+        {constraints.maxWind !== undefined && (
+          <ConstraintPill
+            icon={<Wind className="w-3 h-3" />}
+            label="Wind"
+            value={`≤${constraints.maxWind} mph`}
+            variant="wind"
+          />
+        )}
+
+        {/* Precipitation */}
+        {constraints.noPrecip && (
+          <ConstraintPill
+            icon={<CloudRain className="w-3 h-3" />}
+            label="Precip"
+            value="None"
+            variant="precip"
+          />
+        )}
+
+        {/* Time Requirements */}
+        <ConstraintPill
+          icon={<Clock className="w-3 h-3" />}
+          label="Work"
+          value={`${material.requiredHours}h`}
+          variant="time"
+        />
+        <ConstraintPill
+          icon={<Clock className="w-3 h-3" />}
+          label="Lead"
+          value={`${material.leadTimeHours}h`}
+          variant="time"
+        />
+
+        {/* Storage Constraints */}
+        {(constraints.storageTempMin !== undefined || constraints.storageTempMax !== undefined) && (
+          <ConstraintPill
+            icon={<Warehouse className="w-3 h-3" />}
+            label="Storage"
+            value={
+              constraints.storageTempMin && constraints.storageTempMax
+                ? `${constraints.storageTempMin}-${constraints.storageTempMax}°F`
+                : constraints.storageTempMin
+                  ? `≥${constraints.storageTempMin}°F`
+                  : `≤${constraints.storageTempMax}°F`
+            }
+            variant="storage"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConstraintPill({
+  icon,
+  label,
+  value,
+  variant
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  variant: 'temp' | 'wind' | 'precip' | 'time' | 'storage';
+}) {
+  const variantClasses = {
+    temp: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    wind: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    precip: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    time: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
+    storage: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+  };
+
+  return (
+    <div className={`flex items-center gap-1 px-2 py-1 rounded border ${variantClasses[variant]}`}>
+      {icon}
+      <div className="flex flex-col">
+        <span className="text-[9px] uppercase opacity-70">{label}</span>
+        <span className="text-[11px] font-medium">{value}</span>
+      </div>
+    </div>
+  );
+}
+
 function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 bg-muted/40 text-foreground">
@@ -288,15 +338,6 @@ function InfoChip({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function Constraint({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-muted/40 border border-border/50 rounded px-2 py-1">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-xs font-semibold text-foreground">{value}</div>
-    </div>
-  );
-}
-
 function SignatureLine({ label }: { label: string }) {
   return (
     <div className="border border-border/50 rounded-lg p-4 bg-background/40">
@@ -305,19 +346,4 @@ function SignatureLine({ label }: { label: string }) {
       <div className="text-[10px] text-muted-foreground mt-2">Signature / Date</div>
     </div>
   );
-}
-
-function statusClass(status: "go" | "caution" | "hold") {
-  if (status === "go") return "bg-emerald-500/20 text-emerald-300";
-  if (status === "caution") return "bg-amber-500/20 text-amber-300";
-  return "bg-rose-500/20 text-rose-300";
-}
-
-function formatDateTime(date: Date) {
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  });
 }

@@ -1,14 +1,11 @@
-import { getForecastServer, groupForecastByDayServer } from "@/lib/weather-server";
 import { PROJECTS } from "@/lib/config";
 import WinterWorkPlan from "@/components/winter-work-plan";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-export const revalidate = 300; // Revalidate every 5 minutes
-
 export const metadata = {
   title: "Winter Work Plan | Weathercraft Guardian",
-  description: "Printable winter work plan for temperature-sensitive roofing operations.",
+  description: "Product constraints by roofing system for temperature-sensitive operations.",
 };
 
 export default async function WinterWorkPlanPage({
@@ -31,9 +28,6 @@ export default async function WinterWorkPlanPage({
 
   const project =
     PROJECTS.find((p) => p.id === requestedProjectId) ?? PROJECTS[0];
-
-  const forecast = await getForecastServer(project.lat, project.lon);
-  const dailyForecasts = groupForecastByDayServer(forecast);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -106,17 +100,14 @@ export default async function WinterWorkPlanPage({
           </p>
         </div>
 
-        {/* The winter work plan component */}
-        <WinterWorkPlan
-          dailyForecasts={dailyForecasts}
-          hourlyForecast={forecast}
-        />
+        {/* The winter work plan component - product constraints by system */}
+        <WinterWorkPlan />
 
         {/* Share mode footer */}
         {isShareMode && (
           <div className="mt-8 pt-6 border-t border-border/30 text-center no-print">
             <p className="text-xs text-muted-foreground/60">
-              This document is provided for review purposes. Weather data updates every 5 minutes.
+              This document is provided for review purposes.
             </p>
           </div>
         )}
