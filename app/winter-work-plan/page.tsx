@@ -91,6 +91,18 @@ export default async function WinterWorkPlanPage({
           </div>
         )}
 
+        {/* Planning disclaimer */}
+        <div className="mb-6 p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 text-sm">
+          <p className="text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Planning Notice:</span>{" "}
+            While every effort will be made to perform work within the scope of work requirements and
+            manufacturer product specifications as outlined, this document serves as a planning tool
+            to support informed decision-making. Weather conditions are inherently variable, and actual
+            work windows may differ from forecasted opportunities. Final scheduling decisions will be
+            made on-site based on real-time conditions.
+          </p>
+        </div>
+
         {/* The winter work plan component */}
         <WinterWorkPlan
           dailyForecasts={dailyForecasts}
