@@ -110,25 +110,127 @@
 }
 
 @media print {
-  body {
+  @page {
+    size: 8.5in 11in portrait;
+    margin: 0.5in 0.5in 0.5in 0.5in;
+  }
+
+  html, body {
+    width: 8.5in;
+    height: 11in;
     background: white !important;
     color: #0f172a !important;
+    font-size: 10pt;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .no-print {
+
+  .no-print, .screen-only {
     display: none !important;
   }
-  .screen-only {
-    display: none !important;
-  }
+
   .print-only {
     display: block !important;
   }
+
   .print-area {
     box-shadow: none !important;
     border: none !important;
+    border-radius: 0 !important;
+    background: white !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
+
+  .print-area > div {
+    padding: 0.25in !important;
+  }
+
   .print-area * {
     color: #0f172a !important;
+    background-color: transparent !important;
+  }
+
+  /* Table styling for print */
+  .print-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+  }
+
+  .print-area th, .print-area td {
+    border: 1px solid #d1d5db !important;
+    padding: 4px 6px !important;
+  }
+
+  .print-area thead {
+    background-color: #f3f4f6 !important;
+  }
+
+  /* Badge/status styling for print */
+  .print-area .bg-emerald-500\/20 {
+    background-color: #d1fae5 !important;
+    color: #065f46 !important;
+  }
+  .print-area .bg-amber-500\/20 {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+  }
+  .print-area .bg-rose-500\/20 {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+  }
+
+  /* Card borders for print */
+  .print-area .border {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  .print-area .rounded-lg, .print-area .rounded-md {
+    border-radius: 4px !important;
+  }
+
+  /* Muted backgrounds for print */
+  .print-area .bg-muted\/40, .print-area .bg-background\/40 {
+    background-color: #f9fafb !important;
+  }
+
+  /* Signature lines */
+  .print-area .border-b {
+    border-bottom: 1px solid #9ca3af !important;
+  }
+
+  /* Section spacing */
+  .print-area section {
+    page-break-inside: avoid;
+    margin-bottom: 0.2in !important;
+  }
+
+  /* Header styling */
+  .print-area header {
+    margin-bottom: 0.15in !important;
+    padding-bottom: 0.1in !important;
+    border-bottom: 2px solid #374151 !important;
+  }
+
+  /* Info chips */
+  .print-area .flex.items-center.gap-2.rounded-lg {
+    background-color: #f3f4f6 !important;
+    border: 1px solid #d1d5db !important;
+    padding: 6px 10px !important;
+  }
+
+  /* Avoid breaking inside cards */
+  .print-area .border.rounded-lg {
+    page-break-inside: avoid;
+  }
+
+  /* Grid layouts for print - use direct grid selectors */
+  .print-area .grid {
+    display: grid !important;
+    gap: 0.15in !important;
   }
 }
 
